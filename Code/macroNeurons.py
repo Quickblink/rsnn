@@ -69,12 +69,59 @@ class SuperSpike(torch.autograd.Function):
         return grad_output / (SuperSpike.scale * torch.abs(input) + 1.0) ** 2
 
 
+class MagicNeuron(nn.Module):
+    def __init__(self, params):
+        super(MagicNeuron, self).__init__()
+        self.alpha = params['ALPHA']
+        self.beta = params['BETA']
+        with mif('SPIKE_FN == "bellec"'):
+            self.spike_fn = BellecSpike.apply
+        with melse:
+            self.spike_fn = SuperSpike.apply
+        self.reset_zero = params['RESET_ZERO']
+        self.thresh_add = params['THRESH_ADD']
+        self.thresh_decay = params['THRESH_DECAY']
+
+    #@printcode
+    def forward(self, x, p, h):
+        if not h:
+            h = {'mem': torch.zeros_like(x), 'threshold': torch.zeros_like(x)}
+            with mif('ALPHA > 0'):
+                h['syn'] = torch.zeros_like(x)
+
+        new_h = {}
+        with mif('BETA < 1'):
+            mem = self.beta * h['mem']
+        with melse:
+            mem = h['mem']
+        with mif('ALPHA > 0'):
+            new_h['syn'] = self.alpha * h['syn'] + x
+            mem = mem + new_h['syn']
+        with melse:
+            mem = mem + x
+        with mif('THRESH_DECAY < 1'):
+            new_h['threshold'] = self.thresh_decay * h['threshold'] + p
+        with melse:
+            new_h['threshold'] = h['threshold'] + p
+        threshold = torch.where((new_h['threshold'] < 0), (1/(1 - new_h['threshold'])), (new_h['threshold'] + 1))
+        spikes = self.spike_fn((mem - threshold) / threshold) #.detach()
+        with mif('RESET_ZERO'):
+            new_h['mem'] = mem * (1.0 - spikes.detach())
+        with melse:
+            new_h['mem'] = mem - (spikes * new_h['threshold']).detach()
+
+        return spikes, new_h
+
+
 class AdaptiveNeuron(nn.Module):
     def __init__(self, params):
         super(AdaptiveNeuron, self).__init__()
         self.alpha = params['ALPHA']
         self.beta = params['BETA']
-        self.spike_fn = AdaptiveBellec.apply
+        with mif('SPIKE_FN == "bellec"'):
+            self.spike_fn = BellecSpike.apply
+        with melse:
+            self.spike_fn = SuperSpike.apply
         self.reset_zero = params['RESET_ZERO']
         self.thresh_add = params['THRESH_ADD']
         self.thresh_decay = params['THRESH_DECAY']
@@ -93,10 +140,10 @@ class AdaptiveNeuron(nn.Module):
             mem = h['mem']
         with mif('ALPHA > 0'):
             new_h['syn'] = self.alpha * h['syn'] + x
-            mem += new_h['syn']
+            mem = mem + new_h['syn']
         with melse:
-            mem += x
-        spikes = self.spike_fn(mem - h['threshold'], h['threshold'].detach())
+            mem = mem + x
+        spikes = self.spike_fn((mem - h['threshold']) / h['threshold']) #.detach()
         with mif('RESET_ZERO'):
             new_h['mem'] = mem * (1.0 - spikes.detach())
         with melse:
@@ -135,9 +182,9 @@ class LIFNeuron(nn.Module):
             mem = self.beta * h['mem']
         with mif('ALPHA > 0'):
             new_h['syn'] = self.alpha * h['syn'] + x
-            mem += new_h['syn']
+            mem = mem + new_h['syn']
         with melse:
-            mem += x
+            mem = mem + x
         spikes = self.spike_fn(mem - 1)
         with mif('RESET_ZERO'):
             new_h['mem'] = mem * (1.0 - spikes.detach())
@@ -164,7 +211,7 @@ class OutputNeuron(nn.Module):
             h = {'mem': torch.zeros_like(x)}
             with mif('ALPHA > 0'):
                 h['syn'] = torch.zeros_like(x)
-            with mif('COUNT_SPIKES'):
+            with mif('DECODING == "spike_cnt"'):
                 h['spike_count'] = torch.zeros_like(x)
 
         new_h = {}
@@ -175,15 +222,17 @@ class OutputNeuron(nn.Module):
             new_h['mem'] = self.beta * h['mem']
         with mif('ALPHA > 0'):
             new_h['syn'] = self.alpha * h['syn'] + x
-            new_h['mem'] += new_h['syn']
+            new_h['mem'] = new_h['mem'] + new_h['syn']
         with melse:
-            new_h['mem'] += x
-        with mif('COUNT_SPIKES'):
+            new_h['mem'] = new_h['mem'] + x
+        with mif('DECODING == "spike_cnt" or DECODING == "spikes"'):
             spikes = self.spike_fn(new_h['mem'] - 1)
-            new_h['spike_count'] = h['spike_count'] + spikes
             with mif('RESET_ZERO'):
                 new_h['mem'] = new_h['mem'] * (1.0 - spikes.detach())
             with melse:
                 new_h['mem'] = new_h['mem'] - spikes.detach()
-            return new_h['spike_count'], new_h
+            with mif('DECODING == "spike_cnt"'):
+                new_h['spike_count'] = h['spike_count'] + spikes
+                return new_h['spike_count'], new_h
+            return spikes, new_h
         return new_h['mem'], new_h
