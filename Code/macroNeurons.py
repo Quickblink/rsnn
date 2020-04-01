@@ -3,7 +3,40 @@ import torch
 import torch.nn as nn
 from .iff_macro import macros, mif, melse, printcode
 
-#TODO: make neuron models more modular
+
+class FlipFlopSpike(torch.autograd.Function):
+
+    @staticmethod
+    def forward(ctx, input, last):
+        gto = (input >= 1).float()
+        decision = gto - (input <= -1).float()
+        use_old = decision.abs() < 0.5
+        ctx.save_for_backward(input, last, use_old)
+        out = torch.where(use_old, last, gto)
+        return out, decision
+
+    @staticmethod
+    def backward(ctx, grad_output, grad_dec):
+        #print(grad_output[0,0].item())
+        input, last, use_old = ctx.saved_tensors
+        clamped = torch.clamp(grad_output, -1e-3, 1e-3)
+        to_input = clamped * 0.9 * (1 / (2*torch.abs(input + 1) + 1.0) ** 2 + 1 / (2*torch.abs(input - 1) + 1.0) ** 2) / 3#10 #work out doubly spiked function
+        to_last = torch.where(use_old, 0.9 * grad_output, torch.zeros([1]))
+        return to_input, to_last
+
+
+
+
+class NaNtoZero(torch.autograd.Function):
+
+    @staticmethod
+    def forward(ctx, input):
+        return input
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        return torch.where(torch.isnan(grad_output), torch.zeros([1]), grad_output)
+
 
 class AdaptiveBellec(torch.autograd.Function):
 
@@ -43,7 +76,7 @@ class SuperSpike(torch.autograd.Function):
     as this was done in Zenke & Ganguli (2018).
     """
 
-    scale = 100.0  # controls steepness of surrogate gradient
+    scale = 2.0#100.0  # controls steepness of surrogate gradient
 
     @staticmethod
     def forward(ctx, input):
@@ -65,11 +98,89 @@ class SuperSpike(torch.autograd.Function):
         Here we use the normalized negative part of a fast sigmoid
         as this was done in Zenke & Ganguli (2018).
         """
+        #print(grad_output[0,0].item())
         input, = ctx.saved_tensors
-        return grad_output / (SuperSpike.scale * torch.abs(input) + 1.0) ** 2
+        #clamped = torch.clamp(grad_output, -1e-3, 1e-3)
+        out = grad_output / (SuperSpike.scale * torch.abs(input) + 1.0) ** 2
+
+        #out = torch.clamp((grad_output / (SuperSpike.scale * torch.abs(input) + 1.0) ** 2), -1, 1)
+        return out #torch.where((out == 0), torch.ones([1]) * 0.001, out)
+
+
+class CooldownNeuron(nn.Module):
+    def __init__(self, params, size):
+        super(CooldownNeuron, self).__init__()
+        self.spike_fn = SuperSpike.apply
+        self.beta = params['BETA']
+        with mif('SPIKE_FN == "bellec"'):
+            self.spike_fn = BellecSpike.apply
+        with melse:
+            self.spike_fn = SuperSpike.apply
+        self.elu = torch.nn.ELU()
+        self.initial_mem = nn.Parameter(torch.zeros([size]), requires_grad=True)
+        self.sgn = torch.ones([size], requires_grad=False)
+        self.sgn[(size//2):] *= -1
+        self.size = size
+
+    def get_initial_spike(self, batch_size):
+        return (self.sgn < 0).float().expand([batch_size, self.size]) #torch.zeros([batch_size, self.size])#
+
+    #@printcode
+    def forward(self, x, h):
+        #x = NaNtoZero.apply(x)
+        if not h:
+            h = {'mem': torch.zeros_like(x)} #, 'sgn': torch.ones([x.shape[1]])
+            #h['sgn'][(x.shape[1]//2):] *= -1
+            h['mem'] = self.initial_mem.expand(x.shape)
+
+        new_h = {}
+        #new_h['sgn'] = h['sgn']
+        new_h['mem'] = self.beta * h['mem'] + self.elu(x-2) + 1#torch.sigmoid(x-2) #torch.tanh(x) torch.sigmoid(x-4)
+        spikes = self.spike_fn(self.sgn * (new_h['mem'] - 1))
+
+        return spikes, new_h
+
+class FlipFlopNeuron(nn.Module):
+    #@printcode
+    def __init__(self, params):
+        super(FlipFlopNeuron, self).__init__()
+        self.alpha = params['ALPHA']
+        self.beta = params['BETA']
+        self.spike_fn = FlipFlopSpike.apply
+        self.reset_zero = params['RESET_ZERO']
+
+
+    #@printcode
+    def forward(self, x, h):
+        #x = NaNtoZero.apply(x)
+        if not h:
+            h = {'mem': torch.zeros_like(x), 'spikes': torch.zeros_like(x)}
+            with mif('ALPHA > 0'):
+                h['syn'] = torch.zeros_like(x)
+
+        new_h = {}
+        with mif('BETA < 1'):
+            mem = self.beta * h['mem']
+        with melse:
+            mem = h['mem']
+        with mif('ALPHA > 0'):
+            new_h['syn'] = self.alpha * h['syn'] + x
+            mem = mem + new_h['syn']
+        with melse:
+            mem = mem + x
+        spikes, decisions = self.spike_fn(mem, h['spikes']) #.detach() # / (threshold)
+        new_h['spikes'] = spikes
+        with mif('RESET_ZERO'):
+            new_h['mem'] = mem * (1.0 - decisions.abs())
+        with melse:
+            new_h['mem'] = mem - decisions
+
+        return spikes, new_h
+
 
 
 class MagicNeuron(nn.Module):
+    #@printcode
     def __init__(self, params):
         super(MagicNeuron, self).__init__()
         self.alpha = params['ALPHA']
@@ -84,6 +195,8 @@ class MagicNeuron(nn.Module):
 
     #@printcode
     def forward(self, x, p, h):
+        #x = NaNtoZero.apply(x)
+        #p = NaNtoZero.apply(p)
         if not h:
             h = {'mem': torch.zeros_like(x), 'threshold': torch.zeros_like(x)}
             with mif('ALPHA > 0'):
@@ -104,7 +217,7 @@ class MagicNeuron(nn.Module):
         with melse:
             new_h['threshold'] = h['threshold'] + p
         threshold = torch.where((new_h['threshold'] < 0), (1/(1 - new_h['threshold'])), (new_h['threshold'] + 1))
-        spikes = self.spike_fn((mem - threshold) / threshold) #.detach()
+        spikes = self.spike_fn((mem - threshold) / threshold) #.detach() # / (threshold)
         with mif('RESET_ZERO'):
             new_h['mem'] = mem * (1.0 - spikes.detach())
         with melse:
@@ -128,6 +241,7 @@ class AdaptiveNeuron(nn.Module):
 
     #@printcode
     def forward(self, x, h):
+        #x = NaNtoZero.apply(x)
         if not h:
             h = {'mem': torch.zeros_like(x), 'threshold': torch.ones_like(x)}
             with mif('ALPHA > 0'):
@@ -157,7 +271,7 @@ class AdaptiveNeuron(nn.Module):
 
 
 class LIFNeuron(nn.Module):
-    def __init__(self, params):
+    def __init__(self, params, size):
         super(LIFNeuron, self).__init__()
         self.alpha = params['ALPHA']
         self.beta = params['BETA']
@@ -166,11 +280,15 @@ class LIFNeuron(nn.Module):
         with melse:
             self.spike_fn = SuperSpike.apply
         self.reset_zero = params['RESET_ZERO']
+        self.initial_mem = nn.Parameter(torch.zeros([size]), requires_grad=True)
+
 
     #@printcode
     def forward(self, x, h):
+        #x = NaNtoZero.apply(x)
         if not h:
             h = {'mem': torch.zeros_like(x)}
+            h['mem'] = self.initial_mem.expand(x.shape)
             with mif('ALPHA > 0'):
                 h['syn'] = torch.zeros_like(x)
 
@@ -195,7 +313,7 @@ class LIFNeuron(nn.Module):
 
 
 class OutputNeuron(nn.Module):
-    def __init__(self, params):
+    def __init__(self, params, size):
         super(OutputNeuron, self).__init__()
         self.alpha = params['ALPHA']
         self.beta = params['BETA']
@@ -204,11 +322,14 @@ class OutputNeuron(nn.Module):
         with melse:
             self.spike_fn = SuperSpike.apply
         self.reset_zero = params['RESET_ZERO']
+        self.initial_mem = nn.Parameter(torch.zeros([size]), requires_grad=True)
+
 
     #@printcode
     def forward(self, x, h):
         if not h:
             h = {'mem': torch.zeros_like(x)}
+            h['mem'] = self.initial_mem.expand(x.shape)
             with mif('ALPHA > 0'):
                 h['syn'] = torch.zeros_like(x)
             with mif('DECODING == "spike_cnt"'):
