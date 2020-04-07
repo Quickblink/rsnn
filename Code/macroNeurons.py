@@ -1,7 +1,12 @@
 import numpy as np
 import torch
 import torch.nn as nn
-from .iff_macro import macros, mif, melse, printcode
+import importlib
+from .iff_macro import macros, preprocess, set_config, container
+
+if container['first_load']:
+    def preprocess(func):
+        return func
 
 
 class FlipFlopSpike(torch.autograd.Function):
@@ -23,7 +28,6 @@ class FlipFlopSpike(torch.autograd.Function):
         to_input = clamped * 0.9 * (1 / (2*torch.abs(input + 1) + 1.0) ** 2 + 1 / (2*torch.abs(input - 1) + 1.0) ** 2) / 3#10 #work out doubly spiked function
         to_last = torch.where(use_old, 0.9 * grad_output, torch.zeros([1]))
         return to_input, to_last
-
 
 
 
@@ -106,21 +110,23 @@ class SuperSpike(torch.autograd.Function):
         #out = torch.clamp((grad_output / (SuperSpike.scale * torch.abs(input) + 1.0) ** 2), -1, 1)
         return out #torch.where((out == 0), torch.ones([1]) * 0.001, out)
 
-
+@preprocess
 class CooldownNeuron(nn.Module):
     def __init__(self, params, size):
         super(CooldownNeuron, self).__init__()
         self.spike_fn = SuperSpike.apply
         self.beta = params['BETA']
-        with mif('SPIKE_FN == "bellec"'):
+        self.config = params
+        if self.config['SPIKE_FN'] == 'bellec':
             self.spike_fn = BellecSpike.apply
-        with melse:
+        else:
             self.spike_fn = SuperSpike.apply
         self.elu = torch.nn.ELU()
         self.initial_mem = nn.Parameter(torch.zeros([size]), requires_grad=True)
         self.sgn = torch.ones([size], requires_grad=False)
         self.sgn[(size//2):] *= -1
         self.size = size
+
 
     def get_initial_spike(self, batch_size):
         return (self.sgn < 0).float().expand([batch_size, self.size]) #torch.zeros([batch_size, self.size])#
@@ -140,6 +146,7 @@ class CooldownNeuron(nn.Module):
 
         return spikes, new_h
 
+@preprocess
 class FlipFlopNeuron(nn.Module):
     #@printcode
     def __init__(self, params):
@@ -148,6 +155,7 @@ class FlipFlopNeuron(nn.Module):
         self.beta = params['BETA']
         self.spike_fn = FlipFlopSpike.apply
         self.reset_zero = params['RESET_ZERO']
+        self.config = params
 
 
     #@printcode
@@ -155,43 +163,45 @@ class FlipFlopNeuron(nn.Module):
         #x = NaNtoZero.apply(x)
         if not h:
             h = {'mem': torch.zeros_like(x), 'spikes': torch.zeros_like(x)}
-            with mif('ALPHA > 0'):
+            if self.config['ALPHA'] > 0:
                 h['syn'] = torch.zeros_like(x)
 
         new_h = {}
-        with mif('BETA < 1'):
+        if self.config['BETA'] < 1:
             mem = self.beta * h['mem']
-        with melse:
+        else:
             mem = h['mem']
-        with mif('ALPHA > 0'):
+        if self.config['ALPHA'] > 0:
             new_h['syn'] = self.alpha * h['syn'] + x
             mem = mem + new_h['syn']
-        with melse:
+        else:
             mem = mem + x
         spikes, decisions = self.spike_fn(mem, h['spikes']) #.detach() # / (threshold)
         new_h['spikes'] = spikes
-        with mif('RESET_ZERO'):
+        if self.config['RESET_ZERO']:
             new_h['mem'] = mem * (1.0 - decisions.abs())
-        with melse:
+        else:
             new_h['mem'] = mem - decisions
 
         return spikes, new_h
 
 
-
+@preprocess
 class MagicNeuron(nn.Module):
     #@printcode
     def __init__(self, params):
         super(MagicNeuron, self).__init__()
+        self.config = params
         self.alpha = params['ALPHA']
         self.beta = params['BETA']
-        with mif('SPIKE_FN == "bellec"'):
+        if self.config['SPIKE_FN'] == 'bellec':
             self.spike_fn = BellecSpike.apply
-        with melse:
+        else:
             self.spike_fn = SuperSpike.apply
         self.reset_zero = params['RESET_ZERO']
         self.thresh_add = params['THRESH_ADD']
         self.thresh_decay = params['THRESH_DECAY']
+
 
     #@printcode
     def forward(self, x, p, h):
@@ -199,88 +209,92 @@ class MagicNeuron(nn.Module):
         #p = NaNtoZero.apply(p)
         if not h:
             h = {'mem': torch.zeros_like(x), 'threshold': torch.zeros_like(x)}
-            with mif('ALPHA > 0'):
+            if self.config['ALPHA'] > 0:
                 h['syn'] = torch.zeros_like(x)
 
         new_h = {}
-        with mif('BETA < 1'):
+        if self.config['BETA'] < 1:
             mem = self.beta * h['mem']
-        with melse:
+        else:
             mem = h['mem']
-        with mif('ALPHA > 0'):
+        if self.config['ALPHA'] > 0:
             new_h['syn'] = self.alpha * h['syn'] + x
             mem = mem + new_h['syn']
-        with melse:
+        else:
             mem = mem + x
-        with mif('THRESH_DECAY < 1'):
+        if self.config['THRESH_DECAY'] < 1:
             new_h['threshold'] = self.thresh_decay * h['threshold'] + p
-        with melse:
+        else:
             new_h['threshold'] = h['threshold'] + p
         threshold = torch.where((new_h['threshold'] < 0), (1/(1 - new_h['threshold'])), (new_h['threshold'] + 1))
         spikes = self.spike_fn((mem - threshold) / threshold) #.detach() # / (threshold)
-        with mif('RESET_ZERO'):
+        if self.config['RESET_ZERO']:
             new_h['mem'] = mem * (1.0 - spikes.detach())
-        with melse:
+        else:
             new_h['mem'] = mem - (spikes * new_h['threshold']).detach()
 
         return spikes, new_h
 
-
+@preprocess
 class AdaptiveNeuron(nn.Module):
     def __init__(self, params):
         super(AdaptiveNeuron, self).__init__()
+        self.config = params
         self.alpha = params['ALPHA']
         self.beta = params['BETA']
-        with mif('SPIKE_FN == "bellec"'):
+        if self.config['SPIKE_FN'] == 'bellec':
             self.spike_fn = BellecSpike.apply
-        with melse:
+        else:
             self.spike_fn = SuperSpike.apply
         self.reset_zero = params['RESET_ZERO']
         self.thresh_add = params['THRESH_ADD']
         self.thresh_decay = params['THRESH_DECAY']
+
 
     #@printcode
     def forward(self, x, h):
         #x = NaNtoZero.apply(x)
         if not h:
             h = {'mem': torch.zeros_like(x), 'threshold': torch.ones_like(x)}
-            with mif('ALPHA > 0'):
+            if self.config['ALPHA'] > 0:
                 h['syn'] = torch.zeros_like(x)
 
         new_h = {}
-        with mif('BETA < 1'):
+        if self.config['BETA'] < 1:
             mem = self.beta * h['mem']
-        with melse:
+        else:
             mem = h['mem']
-        with mif('ALPHA > 0'):
+        if self.config['ALPHA'] > 0:
             new_h['syn'] = self.alpha * h['syn'] + x
             mem = mem + new_h['syn']
-        with melse:
+        else:
             mem = mem + x
         spikes = self.spike_fn((mem - h['threshold']) / h['threshold']) #.detach()
-        with mif('RESET_ZERO'):
+        if self.config['RESET_ZERO']:
             new_h['mem'] = mem * (1.0 - spikes.detach())
-        with melse:
+        else:
             new_h['mem'] = mem - (spikes * h['threshold']).detach()
-        with mif('THRESH_DECAY < 1'):
+        if self.config['THRESH_DECAY'] < 1:
             new_h['threshold'] = 1 + self.thresh_decay * (h['threshold'] - 1) + self.thresh_add * spikes
-        with melse:
+        else:
             new_h['threshold'] = h['threshold'] + self.thresh_add * spikes
 
         return spikes, new_h
 
-
+@preprocess
 class LIFNeuron(nn.Module):
     def __init__(self, params, size):
         super(LIFNeuron, self).__init__()
+        self.config = params
         self.alpha = params['ALPHA']
         self.beta = params['BETA']
-        with mif('SPIKE_FN == "bellec"'):
+        if self.config['SPIKE_FN'] == 'bellec':
             self.spike_fn = BellecSpike.apply
-        with melse:
+        else:
             self.spike_fn = SuperSpike.apply
         self.reset_zero = params['RESET_ZERO']
         self.initial_mem = nn.Parameter(torch.zeros([size]), requires_grad=True)
+
 
 
     #@printcode
@@ -289,40 +303,42 @@ class LIFNeuron(nn.Module):
         if not h:
             h = {'mem': torch.zeros_like(x)}
             h['mem'] = self.initial_mem.expand(x.shape)
-            with mif('ALPHA > 0'):
+            if self.config['ALPHA'] > 0:
                 h['syn'] = torch.zeros_like(x)
 
         new_h = {}
         # Order of operations unclear. Update Membrane before or after spike calculation? Synapse -> Membrane -> Spike apparently?
-        with mif('BETA == 1'):
-            mem = h['mem']
-        with melse:
+        if self.config['BETA'] < 1:
             mem = self.beta * h['mem']
-        with mif('ALPHA > 0'):
+        else:
+            mem = h['mem']
+        if self.config['ALPHA'] > 0:
             new_h['syn'] = self.alpha * h['syn'] + x
             mem = mem + new_h['syn']
-        with melse:
+        else:
             mem = mem + x
         spikes = self.spike_fn(mem - 1)
-        with mif('RESET_ZERO'):
+        if self.config['RESET_ZERO']:
             new_h['mem'] = mem * (1.0 - spikes.detach())
-        with melse:
+        else:
             new_h['mem'] = mem - spikes.detach()
 
         return spikes, new_h
 
-
+@preprocess
 class OutputNeuron(nn.Module):
     def __init__(self, params, size):
         super(OutputNeuron, self).__init__()
+        self.config = params
         self.alpha = params['ALPHA']
         self.beta = params['BETA']
-        with mif('SPIKE_FN == "bellec"'):
+        if self.config['SPIKE_FN'] == 'bellec':
             self.spike_fn = BellecSpike.apply
-        with melse:
+        else:
             self.spike_fn = SuperSpike.apply
         self.reset_zero = params['RESET_ZERO']
         self.initial_mem = nn.Parameter(torch.zeros([size]), requires_grad=True)
+
 
 
     #@printcode
@@ -330,29 +346,29 @@ class OutputNeuron(nn.Module):
         if not h:
             h = {'mem': torch.zeros_like(x)}
             h['mem'] = self.initial_mem.expand(x.shape)
-            with mif('ALPHA > 0'):
+            if self.config['ALPHA'] > 0:
                 h['syn'] = torch.zeros_like(x)
-            with mif('DECODING == "spike_cnt"'):
+            if self.config['DECODING'] == "spike_cnt":
                 h['spike_count'] = torch.zeros_like(x)
 
         new_h = {}
 
-        with mif('BETA == 1'):
+        if self.config['BETA'] == 1:
             new_h['mem'] = h['mem']
-        with melse:
+        else:
             new_h['mem'] = self.beta * h['mem']
-        with mif('ALPHA > 0'):
+        if self.config['ALPHA'] > 0:
             new_h['syn'] = self.alpha * h['syn'] + x
             new_h['mem'] = new_h['mem'] + new_h['syn']
-        with melse:
+        else:
             new_h['mem'] = new_h['mem'] + x
-        with mif('DECODING == "spike_cnt" or DECODING == "spikes"'):
+        if self.config['DECODING'] == "spike_cnt" or self.config['DECODING'] == "spikes":
             spikes = self.spike_fn(new_h['mem'] - 1)
-            with mif('RESET_ZERO'):
+            if self.config['RESET_ZERO']:
                 new_h['mem'] = new_h['mem'] * (1.0 - spikes.detach())
-            with melse:
+            else:
                 new_h['mem'] = new_h['mem'] - spikes.detach()
-            with mif('DECODING == "spike_cnt"'):
+            if self.config['DECODING'] == "spike_cnt":
                 new_h['spike_count'] = h['spike_count'] + spikes
                 return new_h['spike_count'], new_h
             return spikes, new_h

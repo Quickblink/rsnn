@@ -237,7 +237,8 @@ class newRSNN(nn.Module):
     def forward(self, inp, h=None, logger=None):
         T = inp.shape[0]
         bsz = inp.shape[1]
-        h = h or {'spikes': self.adaptive_layer.get_initial_spike(bsz)} #torch.zeros((bsz, self.hidden_size), device=inp.device)
+        #if not h:
+        h = {'spikes': self.adaptive_layer.get_initial_spike(bsz)} #torch.zeros((bsz, self.hidden_size), device=inp.device)
         new_h = {}
         output = torch.empty((T, bsz, self.num_outputs))
         for t in range(T):
@@ -258,7 +259,7 @@ class newRSNN(nn.Module):
                 o = self.output_linear(x)
                 #o, h_out = self.output_layer(o, h_out)
                 h = new_h
-                if logger:
-                    logger(h, t, i)
+                #if logger:
+                #    logger(h, t, i)
             output[t] = o
         return output, new_h

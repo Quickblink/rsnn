@@ -18,6 +18,7 @@ Types of Neuron:
 2. Adaptive Neuron: Threshold gets increased by fix amount everytime it fires
 3. Magic Neuron: Threshold is a sum over time of dedicated input, similar to the membrane potential
 4. FlipFlop Neuron: Has positive and negative threshold. Firing brings the neuron into one of two states: Constantly firing or not firing.
+5. NoReset Neuron: 
 
 Types of Networks:
 1. Feed Forward: Has no recurrent connection but can carry hidden state through potential and the explicit methods of the respective neurons.
@@ -33,3 +34,7 @@ simulated sequentially (meaning the output of each layer is immediately availabl
 (meaning all layers compute "at once" using the output of the previous layer from the previous timestep). While
 the latter theoretically allows efficient implementation on neuromorphic/parallel hardware, information traverses
 the network with latency. This is especially important, if the agent aims to make quick decisions.
+
+
+Stability and longterm memory usage
+
