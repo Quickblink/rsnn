@@ -127,21 +127,17 @@ class CooldownNeuron(nn.Module):
         self.sgn[(size//2):] *= -1
         self.size = size
 
+    def get_initial_state(self, batch_size):
+        return {'mem': self.initial_mem.expand([batch_size, self.size])}
 
-    def get_initial_spike(self, batch_size):
-        return (self.sgn < 0).float().expand([batch_size, self.size]) #torch.zeros([batch_size, self.size])#
+    def get_initial_output(self, batch_size):
+        return (self.sgn < 0).float().expand([batch_size, self.size])
 
-    #@printcode
     def forward(self, x, h):
-        #x = NaNtoZero.apply(x)
         if not h:
-            h = {'mem': torch.zeros_like(x)} #, 'sgn': torch.ones([x.shape[1]])
-            #h['sgn'][(x.shape[1]//2):] *= -1
-            h['mem'] = self.initial_mem.expand(x.shape)
-
+            h = self.get_initial_state(x.shape[0])
         new_h = {}
-        #new_h['sgn'] = h['sgn']
-        new_h['mem'] = self.beta * h['mem'] + self.elu(x-2) + 1#torch.sigmoid(x-2) #torch.tanh(x) torch.sigmoid(x-4)
+        new_h['mem'] = self.beta * h['mem'] + self.elu(x-2) + 1
         spikes = self.spike_fn(self.sgn * (new_h['mem'] - 1))
 
         return spikes, new_h
@@ -281,6 +277,7 @@ class AdaptiveNeuron(nn.Module):
 
         return spikes, new_h
 
+
 @preprocess
 class LIFNeuron(nn.Module):
     def __init__(self, params, size):
@@ -294,18 +291,18 @@ class LIFNeuron(nn.Module):
             self.spike_fn = SuperSpike.apply
         self.reset_zero = params['RESET_ZERO']
         self.initial_mem = nn.Parameter(torch.zeros([size]), requires_grad=True)
+        self.size = size
 
-
+    def get_initial_state(self, batch_size):
+        h = {'mem': self.initial_mem.expand([batch_size, self.size])}
+        if self.config['ALPHA'] > 0:
+            h['syn'] = torch.zeros([batch_size, self.size])
+        return h
 
     #@printcode
     def forward(self, x, h):
-        #x = NaNtoZero.apply(x)
         if not h:
-            h = {'mem': torch.zeros_like(x)}
-            h['mem'] = self.initial_mem.expand(x.shape)
-            if self.config['ALPHA'] > 0:
-                h['syn'] = torch.zeros_like(x)
-
+            h = self.get_initial_state(x.shape[0])
         new_h = {}
         # Order of operations unclear. Update Membrane before or after spike calculation? Synapse -> Membrane -> Spike apparently?
         if self.config['BETA'] < 1:
@@ -325,6 +322,8 @@ class LIFNeuron(nn.Module):
 
         return spikes, new_h
 
+
+
 @preprocess
 class OutputNeuron(nn.Module):
     def __init__(self, params, size):
@@ -338,8 +337,13 @@ class OutputNeuron(nn.Module):
             self.spike_fn = SuperSpike.apply
         self.reset_zero = params['RESET_ZERO']
         self.initial_mem = nn.Parameter(torch.zeros([size]), requires_grad=True)
+        self.size = size
 
-
+    def get_initial_state(self, batch_size):
+        h = {'mem': self.initial_mem.expand([batch_size, self.size])}
+        if self.config['ALPHA'] > 0:
+            h['syn'] = torch.zeros([batch_size, self.size])
+        return h
 
     #@printcode
     def forward(self, x, h):

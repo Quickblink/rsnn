@@ -1,13 +1,11 @@
 
 import torch
-import torch.optim as optim
-import os
 import sys
 import random
-import matplotlib.pyplot as plt
+
 # hack to perform relative imports
 sys.path.append('../')
-from ChrisCode import train_agent, SQN
+from wip.ChrisCode import SQN
 
 
 
@@ -76,13 +74,13 @@ gym_seed = 216
 
 
 architecture = [4,17,17,2]
-policy_net = SQN.SQN(architecture,device,alpha=ALPHA,beta=BETA,simulation_time=SIMULATION_TIME,add_bias_as_observation=True,
-                  encoding=ENCODING,decoding=DECODING,reset=RESET,threshold=THRESHOLD)
+policy_net = SQN.SQN(architecture, device, alpha=ALPHA, beta=BETA, simulation_time=SIMULATION_TIME, add_bias_as_observation=True,
+                     encoding=ENCODING, decoding=DECODING, reset=RESET, threshold=THRESHOLD)
 # load the fixed initial weights, remove this line to get random initial weights
 #policy_net.load_state_dict(torch.load('./../../CartPole-v0/DSQN-Surrogate-Gradients/initial/model.pt'))
 
-target_net = SQN.SQN(architecture,device,alpha=0,beta=1,simulation_time=SIMULATION_TIME,add_bias_as_observation=True,
-                  encoding=ENCODING,decoding=DECODING,reset=RESET,threshold=THRESHOLD)
+target_net = SQN.SQN(architecture, device, alpha=0, beta=1, simulation_time=SIMULATION_TIME, add_bias_as_observation=True,
+                     encoding=ENCODING, decoding=DECODING, reset=RESET, threshold=THRESHOLD)
 target_net.load_state_dict(policy_net.state_dict())
 
 # initialize optimizer
@@ -99,7 +97,7 @@ for l in policy_net.parameters():#.state_dict()[0]:
 
 #%%
 
-from Code import SNN
+from wip.Code import SNN
 
 #%%
 

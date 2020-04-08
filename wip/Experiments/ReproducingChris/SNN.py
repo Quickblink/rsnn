@@ -1,7 +1,6 @@
-import numpy as np
 import torch
 import torch.nn as nn
-from Code.utils import LoggerFn
+from wip.Code.utils import LoggerFn
 
 class SuperSpike(torch.autograd.Function):
     """

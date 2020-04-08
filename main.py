@@ -2,7 +2,6 @@
 
 import torch
 import torch.optim as optim
-import os
 import sys
 import random
 # import matplotlib.pyplot as plt
@@ -11,8 +10,7 @@ sys.path.append('../')
 # from ChrisCode import train_agent, SQN
 import time
 
-from Code import SNN
-
+from wip.Code import SNN
 
 #%%
 

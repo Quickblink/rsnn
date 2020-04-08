@@ -1,7 +1,6 @@
-import numpy as np
 import torch
 import torch.nn as nn
-from Code.utils import LoggerFn
+
 
 class AdaptiveBellec(torch.autograd.Function):
 

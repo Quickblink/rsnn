@@ -1,7 +1,6 @@
-import macropy.activate
 from macropy.core.macros import Macros
 import ast
-from macropy.core import real_repr, unparse
+from macropy.core import unparse
 from macropy.core.walkers import Walker
 from copy import deepcopy
 import importlib

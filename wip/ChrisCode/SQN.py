@@ -1,18 +1,14 @@
 # this file contains inplementations of a SQN and a conversion method (according to Rueckauer et al. for source see thesis)
 # the SQN class is adapted from SpyTorch (source, see thesis)
 
-import random
 import numpy as np
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-
-import os
 
 from .replay_memory import replay_dataset
 
-from Code.utils import LoggerFn
+
 #from Code.SNN import SuperSpike
 
 
