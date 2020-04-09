@@ -24,37 +24,8 @@ class lstmPolicyPredictor(nn.Module):
         return out, newstate
 
 
+
 class FullyConnected(nn.Module):
-    """
-    A generic fully connected network with ReLu activations, biases and no activation function for
-    the output
-    """
-    def __init__(self,architecture):
-        """
-        Architecture needs to be a list that describes the architecture of the  network,
-        e.g. [4,16,16,2] is a network with 4 inputs, 2 outputs and two hidden layers with 16 neurons
-        each
-        """
-        super(FullyConnected, self).__init__()
-        self.layers = nn.ModuleList()
-        for i in range(0,len(architecture)-1):
-            self.layers.append(nn.Linear(architecture[i], architecture[i+1], bias=True))
-
-    # Called with either one element to determine next action, or a batch
-    # during optimization. Returns tensor([[left0exp,right0exp]...]).
-    def forward(self, inp):
-        out = torch.zeros([1])
-        for i in range(10):
-            x = inp
-            for layer in self.layers[:-1]:
-                x = F.relu(layer(x))
-
-            # no ReLu activation in the output layer
-            out = out + self.layers[-1](x)
-        return out
-
-
-class FullyConnectedBackup(nn.Module):
     """
     A generic fully connected network with ReLu activations, biases and no activation function for
     the output
@@ -78,4 +49,4 @@ class FullyConnectedBackup(nn.Module):
 
         # no ReLu activation in the output layer
         x = self.layers[-1](x)
-        return x
+        return x, None

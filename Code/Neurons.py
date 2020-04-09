@@ -60,7 +60,7 @@ class SuperSpike(torch.autograd.Function):
 class CooldownNeuron(nn.Module):
     def __init__(self, params, size):
         super(CooldownNeuron, self).__init__()
-        self.spike_fn = SuperSpike.apply
+        self.alpha = params['ALPHA']
         self.beta = params['BETA']
         self.config = params
         if self.config['SPIKE_FN'] == 'bellec':
