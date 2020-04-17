@@ -8,9 +8,33 @@ import matplotlib.pyplot as plt
 
 #TODO: clamp in multi?
 
+class PassiveEnv:
+    def __init__(self, batch_size, num_iter, device):
+        self.env = MultiEnv(batch_size, num_iter, device)
+        self.num_iter = num_iter
+        self.device = device
+        self.bsz = batch_size
+
+    def getBatch(self):
+
+        x = torch.rand((self.num_iter, self.bsz), device=self.device)
+
+        data = torch.empty((self.num_iter, self.bsz, 3), device=self.device)
+        targets = torch.empty((self.num_iter, self.bsz, 2), device=self.device)
+        data[0, :, :2] = self.env.reset()
+        data[:, :, 2] = x
+        for i in range(self.num_iter-1):
+            data[i+1, :, :2], _, targets[i] = self.env.step(x[i])
+        targets[-1] = self.env.step(x[-1])[2]
+        return data, targets
+
+    def render(self):
+        self.env.render()
+
+
 class MultiEnv():
     def __init__(self, batch_size, num_points, device):
-        self.data = torch.empty((batch_size, 2, num_points), dtype=torch.float, device=device)
+        self.data = torch.empty((batch_size, 2, num_points+1), dtype=torch.float, device=device)
         self.best = torch.empty((batch_size), dtype=torch.float, device=device)
         self.nstep = 0
         self.batch_size = batch_size
@@ -44,7 +68,7 @@ class MultiEnv():
         self.data[:, 0, self.nstep] = actions.view(self.batch_size)
         self.data[:, 1, self.nstep] = newy
         self.nstep = self.nstep + 1
-        return self.data[:, :, self.nstep-1], reward
+        return self.data[:, :, self.nstep-1], reward, mav
 
     def render(self):
         plt.scatter(self.data[0, 0, :self.nstep].cpu(), self.data[0, 1, :self.nstep].cpu(), c=range(self.nstep))

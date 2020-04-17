@@ -20,7 +20,8 @@ class DynNetwork(nn.Module):
             if layer == 'input':
                 processed.append(layer)
                 continue
-            self.layers[layer+'_linear'] = nn.Linear(getInputs(self.architecture, layer), params[0])
+            if params[4]:
+                self.layers[layer+'_linear'] = params[4](getInputs(self.architecture, layer), params[0])
             self.layers[layer] = params[2](params[3], params[0])
             for p in params[1]:
                 if p not in processed:
@@ -47,7 +48,8 @@ class DynNetwork(nn.Module):
                     x = torch.cat(inputs, dim=1)
                 else:
                     x = results[params[1][0]]
-                x = self.layers[layer+'_linear'](x)
+                if params[4]:
+                    x = self.layers[layer+'_linear'](x)
                 results[layer], hi = self.layers[layer](x, state[idxState])
                 new_state.append(hi)
                 idxState += 1

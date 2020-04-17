@@ -2,6 +2,35 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
+class LSTMWrapper(nn.Module):
+    def __init__(self, params, size):
+        super().__init__()
+        self.size = size
+        self.lstm = nn.LSTM(size, size)
+        self.register_buffer('dummy', torch.zeros([1], requires_grad=False))
+
+
+    def get_initial_state(self, batch_size):
+        h = torch.zeros(self.lstm.get_expected_hidden_size(None, [batch_size]), device=self.dummy.device)
+        return (h, h)
+
+    def forward(self, x, h):
+        x, h = self.lstm(x.unsqueeze(0), h)
+        x = x.squeeze(dim=0)
+        return x, h
+
+class ReLuWrapper(nn.Module):
+    def __init__(self, params, size):
+        super().__init__()
+
+    def get_initial_state(self, batch_size):
+        return ()
+
+    def forward(self, x, h):
+        return F.relu(x), ()
+
+
 class lstmPolicyPredictor(nn.Module):
 
     def __init__(self, inp_dim, hidden_dim, out_hidden_dim):
