@@ -76,8 +76,9 @@ class SeqOnlySpike(nn.Module):
 class CooldownNeuron(nn.Module):
     def __init__(self, size, params):
         super(CooldownNeuron, self).__init__()
-        self.alpha = params['ALPHA']
+        #self.alpha = params['ALPHA']
         self.beta = params['BETA']
+        self.offset = params['OFFSET']
         self.config = params
         if self.config['SPIKE_FN'] == 'bellec':
             self.spike_fn = BellecSpike.apply
@@ -97,10 +98,55 @@ class CooldownNeuron(nn.Module):
         return (self.sgn < 0).float().expand([batch_size, self.in_size])
 
     def forward(self, x, h):
-        h = self.beta * h + self.elu(x-2) + 1
+        h = self.beta * h + self.elu(x-self.offset) + 1
         spikes = self.spike_fn(self.sgn * (h - 1))
 
         return spikes, h
+
+
+class NoResetNeuron(nn.Module):
+    def __init__(self, size, params):
+        super().__init__()
+        self.config = params
+        self.alpha = params['ALPHA']
+        self.beta = params['BETA']
+        if self.config['SPIKE_FN'] == 'bellec':
+            self.spike_fn = BellecSpike.apply
+        else:
+            self.spike_fn = SuperSpike.apply
+        self.initial_mem = nn.Parameter(torch.zeros([size]), requires_grad=True)
+        if self.config['ALPHA'] > 0:
+            self.initial_syn = nn.Parameter(torch.zeros([size]), requires_grad=True)
+        self.in_size = size
+        self.out_size = size
+
+    def get_initial_state(self, batch_size):
+        h = [self.initial_mem.expand([batch_size, self.in_size])]
+        if self.config['ALPHA'] > 0:
+            h.append(self.initial_syn.expand([batch_size, self.in_size]))
+        return tuple(h)
+
+    def get_initial_output(self, batch_size):
+        return torch.zeros([batch_size, self.in_size])
+
+    #@printcode
+    def forward(self, x, h):
+
+        new_h = [None]
+        mem = h[0]
+        if self.config['BETA'] < 1:
+            mem = self.beta * mem
+        if self.config['ALPHA'] > 0:
+            syn = self.alpha * h[1] + x
+            mem = mem + syn
+            new_h.append(syn)
+        else:
+            mem = mem + x
+        spikes = self.spike_fn(mem - 1)
+        new_h[0] = mem
+
+        return spikes, tuple(new_h)
+
 
 
 class LIFNeuron(nn.Module):
