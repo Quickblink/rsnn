@@ -4,7 +4,6 @@ from torch.distributions import Normal
 
 
 def make_dataset_simple(num_batches, batch_size, max_iter, model, teacher, device, env):
-    #reihenFolge!!!!
     obs = torch.zeros((max_iter, num_batches * batch_size, 1), dtype=torch.float, requires_grad=False, device=device)
     mask = torch.zeros((max_iter, num_batches * batch_size, 1), dtype=torch.float, requires_grad=False, device=device)
     target = torch.zeros((max_iter, num_batches * batch_size, 1), dtype=torch.float, requires_grad=False, device=device)

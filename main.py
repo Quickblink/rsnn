@@ -10,7 +10,7 @@ sys.path.append('../')
 # from ChrisCode import train_agent, SQN
 import time
 
-from wip.Code import SNN
+from wip.Code import oldSNN
 
 #%%
 
@@ -92,16 +92,16 @@ neuron_params = {
     'reset_zero': False
 }
 
-neuron = SNN.NonLeaky
-outputneuron = SNN.NLPotential
-spikefn = SNN.SuperSpike.apply
+neuron = oldSNN.NonLeaky
+outputneuron = oldSNN.NLPotential
+spikefn = oldSNN.SuperSpike.apply
 
 #my_net = SNN.FeedForwardSNN(architecture, SNN.LIFNeuron, neuron_params, SNN.SuperSpike.apply, SNN.PotentialNeuron).to(device)
 #my_target_net = SNN.FeedForwardSNN(architecture, SNN.LIFNeuron, neuron_params, SNN.SuperSpike.apply, SNN.PotentialNeuron).to(device)
 
 
-my_net = SNN.FeedForwardSNN(architecture, neuron, neuron_params, spikefn, outputneuron).to(device)
-my_target_net = SNN.FeedForwardSNN(architecture, neuron, neuron_params, spikefn, outputneuron).to(device)
+my_net = oldSNN.FeedForwardSNN(architecture, neuron, neuron_params, spikefn, outputneuron).to(device)
+my_target_net = oldSNN.FeedForwardSNN(architecture, neuron, neuron_params, spikefn, outputneuron).to(device)
 
 
 

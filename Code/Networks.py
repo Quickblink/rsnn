@@ -66,6 +66,9 @@ class DynNetwork(nn.Module):
         return tuple(state), tuple(spikes)
 
 
+def make_SequenceWrapper(model, do_trace):
+    return SequenceTracer(SequenceWrapper(model)) if do_trace else SequenceWrapper(model)
+
 def getTypeName(obj):
     if type(obj) is tuple:
         return 'Tuple['+', '.join([getTypeName(x) for x in obj])+']'
@@ -95,6 +98,8 @@ class SequenceTracer(nn.Module):
         elif self.trace_run == 3:
             self.model = self.og_model
             self.model.model = self.og_model_model
+            self.og_model = None
+            self.og_model_model = None
         self.trace_run += 1
         return self.model(inp, h)
 
@@ -124,12 +129,12 @@ class SequenceWrapper(nn.Module):
         return self.model.get_initial_state(batch_size)
 
 class OuterWrapper(nn.Module):
-    def __init__(self, model, device, batch_size, trace):
+    def __init__(self, model, device, do_trace):
         super().__init__()
         self.pretrace = model.to(device)
-        example_input = (torch.zeros([50, batch_size, self.pretrace.in_size], device=device), self.pretrace.get_initial_state(batch_size))
+        example_input = (torch.zeros([1, 1, self.pretrace.in_size], device=device), self.pretrace.get_initial_state(1))
         self.pretrace(*example_input)
-        self.model = torch.jit.trace(model, example_input) if trace else self.pretrace
+        self.model = torch.jit.trace(model, example_input) if do_trace else self.pretrace
         self.pretrace(*example_input)
 
 
@@ -210,3 +215,4 @@ class DummyNeuron(nn.Module):
 
     def forward(self, x, h):
         return x, ()
+

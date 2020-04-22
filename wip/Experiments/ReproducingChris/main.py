@@ -97,7 +97,7 @@ for l in policy_net.parameters():#.state_dict()[0]:
 
 #%%
 
-from wip.Code import SNN
+from wip.Code import oldSNN
 
 #%%
 
@@ -110,8 +110,8 @@ neuron_params = {
     'reset_zero': False
 }
 
-my_net = SNN.FeedForwardSNN(architecture, SNN.LIFNeuron, neuron_params, SNN.SuperSpike.apply, SNN.PotentialNeuron)
-my_target_net = SNN.FeedForwardSNN(architecture, SNN.LIFNeuron, neuron_params, SNN.SuperSpike.apply, SNN.PotentialNeuron)
+my_net = oldSNN.FeedForwardSNN(architecture, oldSNN.LIFNeuron, neuron_params, oldSNN.SuperSpike.apply, oldSNN.PotentialNeuron)
+my_target_net = oldSNN.FeedForwardSNN(architecture, oldSNN.LIFNeuron, neuron_params, oldSNN.SuperSpike.apply, oldSNN.PotentialNeuron)
 
 #%%
 '''

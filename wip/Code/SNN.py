@@ -2,263 +2,145 @@ import torch
 import torch.nn as nn
 
 
-class Dampener(torch.autograd.Function):
+def getInputs(dict, layer):
+    n = 0
+    for ilay in dict[layer][1]:
+        n += dict[ilay][0]
+    return n
 
-    @staticmethod
-    def forward(ctx, input):
-        return input
+class DynNetwork(nn.Module):
 
-    @staticmethod
-    def backward(ctx, grad_output):
-        return grad_output / 3#10
-
-
-class SNNWrapper(nn.Module):
-    def __init__(self, model, config):
-        super(SNNWrapper, self).__init__()
-        self.model = model
-        self.sim_time = config['SIM_TIME']
-
-    def forward(self, inp):
-        if inp.dim() == 1:
-            inp = inp.unsqueeze(0)
-        inp = inp.expand((self.sim_time, *inp.shape)).detach()
-        out, _ = self.model(inp)
-        return out
-
+    def __init__(self, architecture, sim_time):
+        super(DynNetwork, self).__init__()
+        self.layers = nn.ModuleDict()
+        processed = []
+        self.architecture = architecture
+        self.recurrent_layers = []
+        for layer, params in self.architecture.items():
+            if layer == 'input':
+                processed.append(layer)
+                continue
+            if params[4]:
+                self.layers[layer+'_linear'] = params[4](getInputs(self.architecture, layer), params[0])
+            self.layers[layer] = params[2](params[3], params[0])
+            for p in params[1]:
+                if p not in processed:
+                    self.recurrent_layers.append(p)
+            processed.append(layer)
+        self.sim_time = sim_time
 
 
-class RSNN(nn.Module):
 
-    def __init__(self, neuron_params, num_inputs, num_static, num_adaptive, num_outputs, static_neuron, adaptive_neuron, output_neuron):
-        super(RSNN, self).__init__()
+    def forward(self, inp, h):
+        state, spikes = h
+        for i in range(self.sim_time):
+            new_state = []
+            new_spikes = []
+            idxState = 0
+            results = {'input': inp}
+            for layer, params in self.architecture.items():
+                if layer == 'input':
+                    continue
+                if len(params[1]) > 1:
+                    inputs = []
+                    for p in params[1]:
+                        inputs.append(results[p] if p in results else spikes[self.recurrent_layers.index(p)])
+                    x = torch.cat(inputs, dim=1)
+                else:
+                    x = results[params[1][0]]
+                if params[4]:
+                    x = self.layers[layer+'_linear'](x)
+                results[layer], hi = self.layers[layer](x, state[idxState])
+                new_state.append(hi)
+                idxState += 1
+            for layer in self.recurrent_layers:
+                new_spikes.append(results[layer])
+            state = new_state
+            spikes = new_spikes
+        return results['output'], (tuple(state), tuple(spikes))
 
-        #self.main_linear = nn.Linear(num_inputs + num_static + num_adaptive, num_static + num_adaptive, bias=True)
-        self.static_linear = nn.Linear(num_inputs + num_static + num_adaptive, num_static, bias=True)
-        self.adaptive_linear = nn.Linear(num_inputs + num_static + num_adaptive, num_adaptive, bias=True)
-        self.static_layer = static_neuron(neuron_params)
-        self.adaptive_layer = adaptive_neuron(neuron_params)
-        self.output_linear = nn.Linear(num_static + num_adaptive, num_outputs, bias=True)
-        self.output_layer = output_neuron(neuron_params)
-        self.hidden_size = num_static + num_adaptive
-        self.num_outputs = num_outputs
-        self.sim_time = neuron_params['SIM_TIME']
+    def get_initial_state(self, batch_size):
+        state = []
+        spikes = []
+        for layer in self.architecture:
+            if layer == 'input':
+                continue
+            state.append(self.layers[layer].get_initial_state(batch_size))
+        for layer in self.recurrent_layers:
+            spikes.append(self.layers[layer].get_initial_output(batch_size))
+        return tuple(state), tuple(spikes)
 
-    def forward(self, inp, h=None, logger=None):
-        T = inp.shape[0]
-        bsz = inp.shape[1]
-        h = h or {'spikes': torch.zeros((bsz, self.hidden_size), device=inp.device)}
-        new_h = {}
-        output = torch.empty((T, bsz, self.num_outputs))
-        for t in range(T):
-            h_out = None
-            for i in range(self.sim_time):
-                x = torch.cat((inp[t], h['spikes']), dim=1)
-                #x = self.main_linear(x)
-                sx = self.static_linear(x)
-                sx, new_h[self.static_layer] = self.static_layer(sx, h.get(self.static_layer))
-                ax = self.adaptive_linear(x)
-                ax, new_h[self.adaptive_layer] = self.adaptive_layer(ax, h.get(self.adaptive_layer))
-                new_h['spikes'] = torch.cat((sx, ax), dim=1)
-                o = self.output_linear(new_h['spikes'])
-                #o, new_h[self.output_layer] = self.output_layer(o, h.get(self.output_layer))
-                o, h_out = self.output_layer(o, h_out)
-                h = new_h
-                if logger:
-                    logger(h, t, i)
-            output[t] = o
-        return output, new_h
 
-class magicRSNN(nn.Module):
-
-    def __init__(self, neuron_params, num_inputs, num_static, num_adaptive, num_outputs, static_neuron, adaptive_neuron, output_neuron):
-        super(magicRSNN, self).__init__()
-
-        #self.main_linear = nn.Linear(num_inputs + num_static + num_adaptive, num_static + num_adaptive, bias=True)
-        self.static_linear = nn.Linear(num_inputs + num_static + num_adaptive, num_static, bias=True)
-        self.adaptive_linear = nn.Linear(num_inputs + num_static + num_adaptive, num_adaptive, bias=True)
-        self.magic_linear = nn.Linear(num_inputs + num_static + num_adaptive, num_adaptive, bias=True)
-
-        self.static_layer = static_neuron(neuron_params)
-        self.adaptive_layer = adaptive_neuron(neuron_params)
-        self.output_linear = nn.Linear(num_static + num_adaptive, num_outputs, bias=True)
-        self.output_layer = output_neuron(neuron_params)
-        self.hidden_size = num_static + num_adaptive
-        self.num_outputs = num_outputs
-        self.sim_time = neuron_params['SIM_TIME']
-
-    def forward(self, inp, h=None, logger=None):
-        T = inp.shape[0]
-        bsz = inp.shape[1]
-        h = h or {'spikes': torch.zeros((bsz, self.hidden_size), device=inp.device)}
-        new_h = {}
-        output = torch.empty((T, bsz, self.num_outputs))
-        for t in range(T):
-            h_out = None
-            for i in range(self.sim_time):
-                x = torch.cat((inp[t], h['spikes']), dim=1)
-                #x = self.main_linear(x)
-                sx = self.static_linear(x)
-                sx, new_h[self.static_layer] = self.static_layer(sx, h.get(self.static_layer))
-                ax = self.adaptive_linear(x)
-                mx = self.magic_linear(x)/10
-                ax, new_h[self.adaptive_layer] = self.adaptive_layer(ax, mx, h.get(self.adaptive_layer))
-                new_h['spikes'] = torch.cat((sx, ax), dim=1)
-                o = self.output_linear(new_h['spikes'])
-                #o, new_h[self.output_layer] = self.output_layer(o, h.get(self.output_layer))
-                o, h_out = self.output_layer(o, h_out)
-                h = new_h
-                if logger:
-                    logger(h, t, i)
-            output[t] = o
-        return output, new_h
-
-class FeedForwardSNN(nn.Module):
-
-    def __init__(self, neuron_params, architecture, neuron, output_neuron):
-        super(FeedForwardSNN, self).__init__()
-
-        #self.input_layer = neuron(spike_fn, neuron_params)
-        self.input_linear = nn.Linear(architecture[0], architecture[1], bias=True)
-        self.linear_layers = nn.ModuleList()
-        self.lif_layers = nn.ModuleList()
-        for i in range(1, len(architecture)-1):
-            self.lif_layers.append(neuron(neuron_params))
-            self.linear_layers.append(nn.Linear(architecture[i], architecture[i+1], bias=True))
-        self.output_layer = output_neuron(neuron_params)
-        self.num_outputs = architecture[-1]
-        self.sim_time = neuron_params['SIM_TIME']
-
+    # handle hidden state abstraction and time dimension
+class SequenceWrapper(nn.Module):
+    def __init__(self, model, batch_size, device, trace):
+        super(SequenceWrapper, self).__init__()
+        self.pretrace = model.to(device)
+        self.model = torch.jit.trace(model, (torch.zeros([batch_size, self.pretrace.architecture['input'][0]], device=device), self.pretrace.get_initial_state(batch_size)), optimize=True) if trace else self.pretrace
+        #self.model = self.pretrace
 
     def forward(self, inp, h=None):
-        T = inp.shape[0]
-        bsz = inp.shape[1]
-        h = h or {}
-        new_h = {}
-        output = torch.empty((T, bsz, self.num_outputs))
-        for t in range(T):
-            h_out = None
-            for k in range(self.sim_time):
-                x = inp[t]
-                x = self.input_linear(x)
-                for i in range(len(self.linear_layers)):
-                    x, new_h[self.lif_layers[i]] = self.lif_layers[i](x, h.get(self.lif_layers[i]))
-                    x = self.linear_layers[i](x)
-                o, h_out = self.output_layer(x, h_out)
-                h = new_h
-            output[t] = o
-        return output, new_h
+        if not h:
+            h = self.pretrace.get_initial_state(inp.shape[1])
+        out1, h = self.model(inp[0], h)
+        if inp.shape[0] == 1:
+            return out1.unsqueeze(0), h
+        output = torch.empty(inp.shape[:1]+out1.shape, device=inp.device)
+        output[0] = out1
+        for t in range(1, inp.shape[0]):
+            output[t], h = self.model(inp[t], h)
+        return output, h
+
+
+class DynNetworkold(nn.Module):
+
+    def __init__(self, architecture, sim_time):
+        super(DynNetworkold, self).__init__()
+        self.layers = nn.ModuleDict()
+        processed = []
+        self.architecture = architecture
+        self.recurrent_layers = []
+        for layer, params in self.architecture.items():
+            if layer == 'input':
+                processed.append(layer)
+                continue
+            self.layers[layer+'_linear'] = nn.Linear(getInputs(self.architecture, layer), params[0])
+            self.layers[layer] = params[2](params[3], params[0])
+            for p in params[1]:
+                if p not in processed:
+                    self.recurrent_layers.append(p)
+            processed.append(layer)
+        self.sim_time = sim_time
 
 
 
-class AdaptiveFF(nn.Module):
+    def forward(self, inp, h):
+        new_h = {'spikes': {}}
+        for i in range(self.sim_time):
+            results = {'input': inp}
+            for layer, params in self.architecture.items():
+                if layer == 'input':
+                    continue
+                if len(params[1]) > 1:
+                    inputs = []
+                    for p in params[1]:
+                        inputs.append(results[p] if p in results else h['spikes'][p])
+                    x = torch.cat(inputs, dim=1)
+                else:
+                    x = results[params[1][0]]
+                x = self.layers[layer+'_linear'](x)
+                results[layer], new_h[layer] = self.layers[layer](x, h[layer])
+                if layer in self.recurrent_layers:
+                    new_h['spikes'][layer] = results[layer]
+            h = new_h
+        return results['output'], (tuple([results['mem']]),)#new_h
 
-    def __init__(self, neuron_params, num_inputs, num_static1, num_adaptive, num_static2, num_outputs, static_neuron, adaptive_neuron, output_neuron):
-        super(AdaptiveFF, self).__init__()
-
-        #self.input_layer = neuron(spike_fn, neuron_params)
-        self.input_linear = nn.Linear(num_inputs, num_static1, bias=True)
-        self.static1 = static_neuron(neuron_params)
-        self.static_to_adaptive = nn.Linear(num_static1, num_adaptive)
-        self.adaptive_layer = adaptive_neuron(neuron_params)
-        self.static_linear = nn.Linear(num_adaptive+num_static1, num_static2)
-        self.static2 = static_neuron(neuron_params)
-        self.output_linear = nn.Linear(num_static2, num_outputs)
-        self.output_layer = output_neuron(neuron_params)
-        self.num_outputs = num_outputs
-        self.sim_time = neuron_params['SIM_TIME']
-
-
-    def forward(self, inp, h=None, logger=None):
-        T = inp.shape[0]
-        bsz = inp.shape[1]
-        h = h or {}
-        new_h = {}
-        output = torch.empty((T, bsz, self.num_outputs))
-        for t in range(T):
-            h_out = None
-            for k in range(self.sim_time):
-                x = inp[t]
-                x = self.input_linear(x)
-                x, new_h[self.static1] = self.static1(x, h.get(self.static1))
-                ax = self.static_to_adaptive(x)
-                ax, new_h[self.adaptive_layer] = self.adaptive_layer(ax, h.get(self.adaptive_layer))
-                x = torch.cat((x, ax), dim=1)
-                x = self.static_linear(x)
-                x, new_h[self.static2] = self.static2(x, h.get(self.static2))
-                x = self.output_linear(x)
-                o, h_out = self.output_layer(x, h_out)
-                h = new_h
-                #if logger:
-                #    logger(h, t, k)
-            output[t] = o
-        return output, new_h
-
-
-
-class TestNN(nn.Module):
-
-    def __init__(self, neuron_params, architecture, neuron, output_neuron):
-        super(TestNN, self).__init__()
-
-        #self.input_layer = neuron(spike_fn, neuron_params)
-        self.input_linear = nn.Linear(architecture[0], architecture[-1], bias=True)
-
-
-    def forward(self, inp, h=None):
-        x = self.input_linear(inp[0])#.detach()
-        return x.unsqueeze(0), {} #output
-
-
-
-class newRSNN(nn.Module):
-
-    def __init__(self, neuron_params, num_inputs, num_pre, num_adaptive, num_post, num_post2, num_outputs, static_neuron, adaptive_neuron, output_neuron):
-        super(newRSNN, self).__init__()
-
-        self.pre_layer = static_neuron(neuron_params, num_pre)
-        self.adaptive_layer = adaptive_neuron(neuron_params, num_adaptive)
-        self.post_layer = static_neuron(neuron_params, num_post)
-        #self.post_layer2 = static_neuron(neuron_params, num_post2)
-        self.output_layer = output_neuron(neuron_params, num_outputs)
-
-        self.pre_linear = nn.Linear(num_inputs + num_adaptive, num_pre, bias=True)
-        self.adaptive_linear = nn.Linear(num_pre, num_adaptive, bias=True)
-        self.post_linear = nn.Linear(num_inputs + num_adaptive, num_post, bias=True)
-        #self.post_linear2 = nn.Linear(num_post, num_post2, bias=True)
-        #num_post = num_post2
-        self.output_linear = nn.Linear(num_post, num_outputs, bias=True)
-
-        self.hidden_size = num_adaptive
-        self.num_outputs = num_outputs
-        self.sim_time = neuron_params['SIM_TIME']
-
-    def forward(self, inp, h=None, logger=None):
-        T = inp.shape[0]
-        bsz = inp.shape[1]
-        #if not h:
-        h = {'spikes': self.adaptive_layer.get_initial_output(bsz)} #torch.zeros((bsz, self.hidden_size), device=inp.device)
-        new_h = {}
-        output = torch.empty((T, bsz, self.num_outputs))
-        for t in range(T):
-            h_out = None
-            for i in range(self.sim_time):
-                x = torch.cat((inp[t], h['spikes']), dim=1)
-                x = self.pre_linear(x)
-                x, new_h[self.pre_layer] = self.pre_layer(x, h.get(self.pre_layer))
-                x = self.adaptive_linear(x)
-                x, new_h[self.adaptive_layer] = self.adaptive_layer(x, h.get(self.adaptive_layer))
-                new_h['spikes'] = x
-                #x = Dampener.apply(x)
-                x = torch.cat((inp[t], x), dim=1)
-                x = self.post_linear(x)
-                x, new_h[self.post_layer] = self.post_layer(x, h.get(self.post_layer))
-                #x = self.post_linear2(x)
-                #x, new_h[self.post_layer2] = self.post_layer2(x, h.get(self.post_layer2))
-                o = self.output_linear(x)
-                o, h_out = self.output_layer(o, h_out)
-                h = new_h
-                #if logger:
-                #    logger(h, t, i)
-            output[t] = o
-        return output, new_h
+    def get_initial_state(self, batch_size):
+        state = {'spikes': {}}
+        for layer in self.architecture:
+            if layer == 'input':
+                continue
+            state[layer] = self.layers[layer].get_initial_state(batch_size)
+        for layer in self.recurrent_layers:
+            state['spikes'][layer] = self.layers[layer].get_initial_output(batch_size)
+        return state
