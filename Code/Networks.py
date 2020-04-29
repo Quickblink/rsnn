@@ -129,18 +129,19 @@ class SequenceWrapper(nn.Module):
         return self.model.get_initial_state(batch_size)
 
 class OuterWrapper(nn.Module):
-    def __init__(self, model, device, do_trace):
+    def __init__(self, model, device, do_trace, two_dim=False):
         super().__init__()
         self.pretrace = model.to(device)
-        example_input = (torch.zeros([1, 1, self.pretrace.in_size], device=device), self.pretrace.get_initial_state(1))
+        example_input = ((torch.zeros([1, 1, self.pretrace.in_size], device=device) if not two_dim else torch.zeros([1, self.pretrace.in_size], device=device)), self.pretrace.get_initial_state(1))
         self.pretrace(*example_input)
         self.model = torch.jit.trace(model, example_input) if do_trace else self.pretrace
         self.pretrace(*example_input)
+        self.two_dim = two_dim
 
 
     def forward(self, inp, h=None):
         if not h:
-            h = self.pretrace.get_initial_state(inp.shape[1])
+            h = self.pretrace.get_initial_state(inp.shape[0] if self.two_dim else inp.shape[1])
         return self.model(inp, h)
 
     def save(self, addr):

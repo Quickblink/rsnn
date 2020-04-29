@@ -51,6 +51,7 @@ class MultiEnv():
 
 
     def step(self, actions, shadow=False):
+        actions = torch.clamp(actions, 0, 1)
         x = self.data[:, 0, :self.nstep]
         y = self.data[:, 1, :self.nstep]
         K = torch.exp(-1 / 2 * ((x.view(self.batch_size, self.nstep, 1) - x.view(self.batch_size, 1, self.nstep)) / 0.1) ** 2) + torch.eye(self.nstep, dtype=torch.float, device=self.device) * 1e-5
@@ -68,7 +69,7 @@ class MultiEnv():
         self.data[:, 0, self.nstep] = actions.view(self.batch_size)
         self.data[:, 1, self.nstep] = newy
         self.nstep = self.nstep + 1
-        return self.data[:, :, self.nstep-1], reward, mav
+        return self.data[:, :, self.nstep-1], reward.unsqueeze(1), mav
 
     def render(self):
         plt.scatter(self.data[0, 0, :self.nstep].cpu(), self.data[0, 1, :self.nstep].cpu(), c=range(self.nstep))
