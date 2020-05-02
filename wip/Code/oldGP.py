@@ -9,23 +9,22 @@ import matplotlib.pyplot as plt
 #TODO: clamp in multi?
 
 class PassiveEnv:
-    def __init__(self, batch_size, num_iter, device, dims=1):
-        self.env = MultiEnv(batch_size, num_iter, device, dims=dims)
+    def __init__(self, batch_size, num_iter, device):
+        self.env = MultiEnv(batch_size, num_iter, device)
         self.num_iter = num_iter
         self.device = device
         self.bsz = batch_size
-        self.dims = dims
 
     def getBatch(self):
 
-        x = torch.rand((self.num_iter, self.bsz, self.dims), device=self.device)
+        x = torch.rand((self.num_iter, self.bsz), device=self.device)
 
-        data = torch.empty((self.num_iter, self.bsz, 1+2*self.dims), device=self.device)
+        data = torch.empty((self.num_iter, self.bsz, 3), device=self.device)
         targets = torch.empty((self.num_iter, self.bsz, 2), device=self.device)
-        data[0, :, :self.dims+1] = self.env.reset()
-        data[:, :, self.dims+1:] = x
+        data[0, :, :2] = self.env.reset()
+        data[:, :, 2] = x
         for i in range(self.num_iter-1):
-            data[i+1, :, :self.dims+1], _, targets[i] = self.env.step(x[i])
+            data[i+1, :, :2], _, targets[i] = self.env.step(x[i])
         targets[-1] = self.env.step(x[-1])[2]
         return data, targets
 
@@ -33,41 +32,32 @@ class PassiveEnv:
         self.env.render()
 
 
-def exponential_kernel(x1, x2, ls): #expects scaled inputs
-    return torch.exp(-1/2 * ((x1/ls - x2/ls)**2).sum(dim=-1))
-
-
-class MultiEnv:
-    def __init__(self, batch_size, num_points, device, dims=1):
-        self.data = torch.empty((batch_size, num_points+1, dims + 1), dtype=torch.float, device=device) #old: batch, 1, points
+class MultiEnv():
+    def __init__(self, batch_size, num_points, device):
+        self.data = torch.empty((batch_size, 2, num_points+1), dtype=torch.float, device=device)
         self.best = torch.empty((batch_size), dtype=torch.float, device=device)
         self.nstep = 0
         self.batch_size = batch_size
         self.device = device
-        self.dims = dims
-        self.length_scale = 0.1
 
     def reset(self):
-        self.data[:, 0, :self.dims] = torch.rand((self.batch_size, self.dims), dtype=torch.float, device=self.device)
+        self.data[:, 0, 0] = torch.rand((self.batch_size), dtype=torch.float, device=self.device)
         self.best = torch.normal(torch.zeros((1), dtype=torch.float, device=self.device).expand((self.batch_size, 1)),
                                  torch.ones((1), dtype=torch.float, device=self.device).expand((self.batch_size, 1))).squeeze()
         self.nstep = 1
-        self.data[:, 0, -1] = self.best
-        return self.data[:, 0]
+        self.data[:, 1, 0] = self.best
+        return self.data[:, :, 0]
 
 
 
     def step(self, actions, shadow=False):
         actions = torch.clamp(actions, 0, 1)
-        x = self.data[:, :self.nstep, :-1]
-        y = self.data[:, :self.nstep, -1]
-        K = exponential_kernel(x.unsqueeze(2), x.unsqueeze(1), self.length_scale) + torch.eye(self.nstep, dtype=torch.float, device=self.device) * 1e-5
-        #print(K)
-        # K = torch.exp(-1 / 2 * ((x.view(self.batch_size, self.nstep, 1) - x.view(self.batch_size, 1, self.nstep)) / 0.1) ** 2) + torch.eye(self.nstep, dtype=torch.float, device=self.device) * 1e-5
+        x = self.data[:, 0, :self.nstep]
+        y = self.data[:, 1, :self.nstep]
+        K = torch.exp(-1 / 2 * ((x.view(self.batch_size, self.nstep, 1) - x.view(self.batch_size, 1, self.nstep)) / 0.1) ** 2) + torch.eye(self.nstep, dtype=torch.float, device=self.device) * 1e-5
         u = torch.cholesky(K)
-        k = exponential_kernel(x, actions.view(self.batch_size, 1, self.dims), self.length_scale)
-        #print(k)
-        # k = torch.exp(-1 / 2 * ((x.view(self.batch_size, self.nstep) - actions.view(self.batch_size,1)) / 0.1) ** 2)
+        k = torch.exp(-1 / 2 * ((x.view(self.batch_size, self.nstep) - actions.view(self.batch_size,1)) / 0.1) ** 2)
+        print(k)
         sol = torch.cholesky_solve(torch.cat((k.view(self.batch_size, self.nstep, 1), y.view(self.batch_size, self.nstep, 1)), dim=2), u)
         #print(sol)
         mav = torch.matmul(k.view(self.batch_size, 1, self.nstep), sol).view(self.batch_size, 2) #check shapes!
@@ -77,19 +67,19 @@ class MultiEnv:
         reward = newbest - self.best
         if not shadow:
             self.best = newbest
-        self.data[:, self.nstep, :-1] = actions.view(self.batch_size, self.dims)
-        self.data[:, self.nstep, -1] = newy
+        self.data[:, 0, self.nstep] = actions.view(self.batch_size)
+        self.data[:, 1, self.nstep] = newy
         self.nstep = self.nstep + 1
-        return self.data[:, self.nstep-1], reward.unsqueeze(1), mav
+        return self.data[:, :, self.nstep-1], reward.unsqueeze(1), mav
 
     def render(self):
-        plt.scatter(self.data[0, :self.nstep, 0].cpu(), self.data[0, :self.nstep, -1].cpu(), c=range(self.nstep))
+        plt.scatter(self.data[0, 0, :self.nstep].cpu(), self.data[0, 1, :self.nstep].cpu(), c=range(self.nstep))
         for i in range(self.nstep):
             r = np.random.rand() * 2 * np.pi
             xoff = np.sin(r) * 0.1
             yoff = np.cos(r) * 0.1
-            plt.text(self.data[0,i,0].item()+xoff-0.01, self.data[0,i,-1].item()+yoff-0.01, i)
-            plt.plot([self.data[0,i,0].item()+xoff*0.2, self.data[0,i,0].item()+xoff*0.8], [self.data[0,i,-1].item()+yoff*0.2, self.data[0,i,-1].item()+yoff*0.8], c='black')
+            plt.text(self.data[0,0,i].item()+xoff-0.01, self.data[0,1,i].item()+yoff-0.01, i)
+            plt.plot([self.data[0,0,i].item()+xoff*0.2, self.data[0,0,i].item()+xoff*0.8], [self.data[0,1,i].item()+yoff*0.2, self.data[0,1,i].item()+yoff*0.8], c='black')
 
 
 class GPEnv(gym.Env):

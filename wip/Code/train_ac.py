@@ -33,13 +33,13 @@ def make_dataset(num_batches, batch_size, max_iter, v_model, p_model, m_model, d
 
 '''
 
-def make_dataset(num_batches, batch_size, max_iter, v_model, p_model, m_model, device, env, var, gamma):
+def make_dataset(num_batches, batch_size, max_iter, v_model, p_model, m_model, device, env, var, gamma, dims):
     with torch.no_grad():
-        obs = torch.zeros((max_iter, num_batches * batch_size, 2), dtype=torch.float, requires_grad=False, device=device)
+        obs = torch.zeros((max_iter, num_batches * batch_size, dims+1), dtype=torch.float, requires_grad=False, device=device)
         mem = torch.zeros((max_iter, num_batches * batch_size, 128), dtype=torch.float, requires_grad=False, device=device)
         value = torch.zeros((max_iter, num_batches * batch_size, 1), dtype=torch.float, requires_grad=False, device=device)
         advantage = torch.zeros((max_iter, num_batches * batch_size, 1), dtype=torch.float, requires_grad=False, device=device)
-        actions = torch.zeros((max_iter, num_batches * batch_size, 1), dtype=torch.float, requires_grad=False, device=device)
+        actions = torch.zeros((max_iter, num_batches * batch_size, dims), dtype=torch.float, requires_grad=False, device=device)
 
         r_sum = 0
         for i in range(num_batches):
