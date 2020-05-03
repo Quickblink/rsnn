@@ -1,3 +1,12 @@
+TODO (in no order):
+1. Display Architecture(s)
+2. Train to forget: Reset during processing
+3. Setup Thesis latex document
+4. make bibtex list of referenced papers
+
+
+"Spiking Neuron with Discontinous Integration" from "Algorithm and Hardware Design of Discrete-Time Spiking Neural Networks Based on Back Propagation with Binary Activations"
+
 Naming conventions:
 environments, scenarios, experiments
 
