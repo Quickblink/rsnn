@@ -127,7 +127,8 @@ class NoResetNeuron(nn.Module):
         return tuple(h)
 
     def get_initial_output(self, batch_size):
-        return torch.zeros([batch_size, self.in_size])
+        return self.spike_fn(self.initial_mem.expand([batch_size, self.in_size]) - 1)
+            #torch.zeros([batch_size, self.in_size])
 
     #@printcode
     def forward(self, x, h):
