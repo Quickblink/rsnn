@@ -2,8 +2,9 @@
   <configuration default="false" name="Jupyter" type="docker-deploy" factoryName="dockerfile" server-name="Docker">
     <deployment type="dockerfile">
       <settings>
+        <option name="imageTag" value="imrsnn" />
         <option name="buildCliOptions" value="" />
-        <option name="command" value="jupyter notebook --NotebookApp.token=af7f759ad670430c1df0c84ba3fb08eab0e8443ed6cad6de" />
+        <option name="command" value="jupyter notebook --NotebookApp.token=af7f759ad670430c1df0c84ba3fb08eab0e8443ed6cad6de --port=8889" />
         <option name="containerName" value="rsnn_jupyter" />
         <option name="entrypoint" value="" />
         <option name="envVars">
@@ -14,7 +15,6 @@
             </DockerEnvVarImpl>
           </list>
         </option>
-        <option name="imageTag" value="imrsnn" />
         <option name="commandLineOptions" value="--net=host --ipc=host" />
         <option name="sourceFilePath" value="Dockerfile" />
         <option name="volumeBindings">

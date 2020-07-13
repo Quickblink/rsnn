@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 
 
+#devide by threshold, 1-beta factor
+
 class BellecSpike(torch.autograd.Function):
 
     @staticmethod
@@ -167,9 +169,7 @@ class AdaptiveNeuron(nn.Module):
         self.out_size = size
 
     def get_initial_state(self, batch_size):
-        h = [self.initial_mem.expand([batch_size, self.in_size]), torch.ones([batch_size, self.in_size], device=self.initial_mem.device)]
-        if self.config['ALPHA'] > 0:
-            h.append(self.initial_syn.expand([batch_size, self.in_size]))
+        h = [self.initial_mem.expand([batch_size, self.in_size]), torch.ones([batch_size, self.in_size], device=self.initial_mem.device), self.get_initial_output(batch_size)]
         return tuple(h)
 
     def get_initial_output(self, batch_size):
@@ -177,25 +177,17 @@ class AdaptiveNeuron(nn.Module):
 
     #@printcode
     def forward(self, x, h):
-        new_h = [None, None]
-        mem = h[0]
+        new_h = [None, None, None]
+        old_mem = h[0]
         threshold = h[1]
-        if self.config['BETA'] < 1:
-            mem = self.beta * mem
-        if self.config['ALPHA'] > 0:
-            syn = self.alpha * h[2] + x
-            mem = mem + syn
-            new_h.append(syn)
-        else:
-            mem = mem + x
-        spikes = self.spike_fn(mem - threshold)
-        if self.config['RESET_ZERO']:
-            mem = mem * (1.0 - spikes.detach())
-        else:
-            mem = mem - threshold * spikes.detach()
+        old_spike = h[2]
+        mem = self.beta * old_mem + (1-self.beta) * x - old_spike
+        spikes = self.spike_fn(old_mem - threshold)
+        spikes = torch.where(old_spike > 0, torch.zeros_like(spikes), spikes)
         threshold = 1 + self.decay * (threshold - 1) + spikes
         new_h[0] = mem
         new_h[1] = threshold
+        new_h[2] = spikes
 
         return spikes, tuple(new_h)
 
@@ -217,9 +209,7 @@ class LIFNeuron(nn.Module):
         self.out_size = size
 
     def get_initial_state(self, batch_size):
-        h = [self.initial_mem.expand([batch_size, self.in_size])]
-        if self.config['ALPHA'] > 0:
-            h.append(self.initial_syn.expand([batch_size, self.in_size]))
+        h = [self.initial_mem.expand([batch_size, self.in_size]), self.get_initial_output(batch_size)]
         return tuple(h)
 
     def get_initial_output(self, batch_size):
@@ -228,22 +218,14 @@ class LIFNeuron(nn.Module):
     #@printcode
     def forward(self, x, h):
 
-        new_h = [None]
-        mem = h[0]
-        if self.config['BETA'] < 1:
-            mem = self.beta * mem
-        if self.config['ALPHA'] > 0:
-            syn = self.alpha * h[1] + x
-            mem = mem + syn
-            new_h.append(syn)
-        else:
-            mem = mem + x
-        spikes = self.spike_fn(mem - 1)
-        if self.config['RESET_ZERO']:
-            mem = mem * (1.0 - spikes.detach())
-        else:
-            mem = mem - spikes.detach()
+        new_h = [None, None]
+        old_mem = h[0]
+        old_spike = h[1]
+        mem = self.beta * old_mem + (1-self.beta) * x - old_spike
+        spikes = self.spike_fn(old_mem - 1)
+        spikes = torch.where(old_spike > 0, torch.zeros_like(spikes), spikes)
         new_h[0] = mem
+        new_h[1] = spikes
 
         return spikes, tuple(new_h)
 

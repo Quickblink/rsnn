@@ -5,7 +5,62 @@ import torch.nn.functional as F
 
 
 # inputs, neuron, synapse
+class ParallelNetwork(nn.Module):
+    def __init__(self, architecture):
+        super().__init__()
+        self.architecture = copy.deepcopy(architecture)
+        self.in_size = self.architecture['input']
+        del self.architecture['input']
+        self.layers = nn.ModuleDict()
+        processed = ['input']
+        self.recurrent_layers = []
+        for layer, params in self.architecture.items():
+            if params[2]:
+                n = 0
+                for ilay in params[0]:
+                    n += self.in_size if ilay == 'input' else self.architecture[ilay][1].out_size
+                self.layers[layer+'_synapse'] = params[2](n, params[1].in_size)
+            self.layers[layer] = params[1]
+            if layer != 'output':
+                self.recurrent_layers.append(layer)
+            processed.append(layer)
+        self.out_size = self.layers['output'].out_size
 
+
+    def forward(self, inp, h):
+        state, spikes = h
+        new_state = []
+        new_spikes = []
+        idxState = 0
+        l_inputs = {'input': inp}
+        for i, layer in enumerate(self.recurrent_layers):
+            l_inputs[layer] = spikes[i]
+        results = {'input': inp}
+        for layer, params in self.architecture.items():
+            if len(params[0]) > 1:
+                inputs = []
+                for p in params[0]:
+                    inputs.append(l_inputs[p])
+                x = torch.cat(inputs, dim=-1)
+            else:
+                x = l_inputs[params[0][0]]
+            if params[2]:
+                x = self.layers[layer+'_synapse'](x)
+            results[layer], hi = self.layers[layer](x, state[idxState])
+            new_state.append(hi)
+            idxState += 1
+        for layer in self.recurrent_layers:
+            new_spikes.append(results[layer])
+        return results['output'], (tuple(new_state), tuple(new_spikes))
+
+    def get_initial_state(self, batch_size):
+        state = []
+        spikes = []
+        for layer in self.architecture:
+            state.append(self.layers[layer].get_initial_state(batch_size))
+        for layer in self.recurrent_layers:
+            spikes.append(self.layers[layer].get_initial_output(batch_size))
+        return tuple(state), tuple(spikes)
 
 
 class DynNetwork(nn.Module):
@@ -25,7 +80,7 @@ class DynNetwork(nn.Module):
                 self.layers[layer+'_synapse'] = params[2](n, params[1].in_size)
             self.layers[layer] = params[1]
             for p in params[0]:
-                if p not in processed:
+                if p not in processed and p not in self.recurrent_layers:
                     self.recurrent_layers.append(p)
             processed.append(layer)
         self.out_size = self.layers['output'].out_size
@@ -206,7 +261,7 @@ class ReLuWrapper(nn.Module):
 
 
 class DummyNeuron(nn.Module):
-    def __init__(self, size):
+    def __init__(self, size, _):
         super().__init__()
         self.in_size = size
         self.out_size = size
