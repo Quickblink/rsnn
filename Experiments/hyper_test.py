@@ -21,7 +21,7 @@ options = {
 # convert config to runtime (maybe different file?)
 
 
-#deactivate certain combinations: decay_out: False and 1-beta: True
+#deactivate certain combinations: decay_out: False and 1-beta: True, actually wrong
 
 
 #experiments:

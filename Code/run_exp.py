@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader
 import pickle
 
 #TODO: change to 256
-BATCH_SIZE = 256#128
+BATCH_SIZE = 256
 
 USE_JIT = False
 
@@ -41,6 +41,9 @@ like_bellec = {
 }
 
 spec = like_bellec
+
+#TODO: remove
+spec['1-beta'] = False
 
 from Code.Networks import Selector, DynNetwork, OuterWrapper, LSTMWrapper, ReLuWrapper, DummyNeuron, make_SequenceWrapper, ParallelNetwork
 from Code.NewNeurons2 import SeqOnlySpike, CooldownNeuron, OutputNeuron, LIFNeuron, NoResetNeuron, AdaptiveNeuron
@@ -101,16 +104,16 @@ lr = spec['lr']
 optimizer = optim.Adam(params, lr=lr)
 ce = nn.CrossEntropyLoss()
 
-
-
-
 '''
+
+#TODO: check correctness here
+
 with torch.no_grad():
     for i in range(100):
-        model.pretrace.model.layers.adaptive_synapse.weight[i, i+81] = 0
+        loop_model.pretrace.model.layers.mem_synapse.weight[i, i+201] = 0
 
     for i in range(120):
-        model.pretrace.model.layers.regular_synapse.weight[i, i+181] = 0
+        loop_model.pretrace.model.layers.control_synapse.weight[i, i+81] = 0
 
 '''
 
@@ -169,7 +172,7 @@ while i < ITERATIONS:
             stats['loss'].append(loss.item())
             acc = (torch.argmax(out_final, 1) == target).float().mean().item()
             stats['acc'] = acc
-            batch_var = out_final.var(0).mean().item()
+            batch_var = meaned.var(0).mean().item()
             stats['batch_var'] = batch_var
 
         sumloss += loss.item()

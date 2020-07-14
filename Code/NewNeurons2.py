@@ -177,7 +177,6 @@ class AdaptiveNeuron(nn.Module):
 class LIFNeuron(nn.Module):
     def __init__(self, size, params):
         super(LIFNeuron, self).__init__()
-        self.config = params
         self.beta = params['BETA']
         self.omb = params['1-beta']
         if params['SPIKE_FN'] == 'bellec':
