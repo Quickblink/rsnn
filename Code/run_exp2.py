@@ -43,8 +43,8 @@ like_bellec = {
 spec = like_bellec
 
 #TODO: remove
-spec['1-beta'] = False
-spec['decay_out'] = False
+#spec['1-beta'] = False
+#spec['decay_out'] = False
 
 
 from Code.Networks import Selector, DynNetwork, OuterWrapper, LSTMWrapper, ReLuWrapper, DummyNeuron, make_SequenceWrapper, ParallelNetwork
@@ -99,22 +99,29 @@ loop_model = OuterWrapper(make_SequenceWrapper(ParallelNetwork(loop), USE_JIT), 
 
 final_linear = nn.Linear(n_control+n_mem, 10).to(device)
 
+o_weights = pickle.load(open('weight_transplant_enc', 'rb'))
 
+
+o1 = torch.tensor(o_weights['RecWeights/RecurrentWeight:0']).t()
+o2 = torch.tensor(o_weights['InputWeights/InputWeight:0']).t()
+o3 = torch.cat((o2, o1), dim=1)
 with torch.no_grad():
     loop_model.pretrace.model.layers.control_synapse.bias *= 0
     loop_model.pretrace.model.layers.mem_synapse.bias *= 0
+    loop_model.pretrace.model.layers.control_synapse.weight.data[:,:300] = o3[:120]
+    loop_model.pretrace.model.layers.mem_synapse.weight.data[:,:300] = o3[120:]
     final_linear.bias *= 0
+    final_linear.weight.data = torch.tensor(o_weights['out_weight:0']).t()
 loop_model.to(device)
 final_linear.to(device)
 
-#TODO: remove
-params = [ loop_model.pretrace.model.layers.control_synapse.weight, loop_model.pretrace.model.layers.mem_synapse.weight, final_linear.weight, final_linear.bias]
+#TODO: important?
+params = [loop_model.pretrace.model.layers.control_synapse.weight, loop_model.pretrace.model.layers.mem_synapse.weight, final_linear.weight, final_linear.bias]
 
-#TODO: revert all this
 #params = list(loop_model.parameters())+list(final_linear.parameters())
 lr = spec['lr']
 #optimizer = optim.Adam(params, lr=lr)
-optimizer = optim.SGD(params, lr=lr)
+optimizer = optim.Adam(params, lr=lr)
 ce = nn.CrossEntropyLoss()
 
 '''
@@ -175,7 +182,7 @@ while i < ITERATIONS:
         outputs, _ = loop_model(x)
         meaned = outputs[-56:].mean(dim=0) #TODO: what is this value really in bellec?
         out_final = final_linear(meaned)
-        test_norm = out_final.norm().item()
+        #test_norm = out_final.norm().item()
         loss = ce(out_final, target)
 
         loss.backward()
@@ -189,8 +196,7 @@ while i < ITERATIONS:
             batch_var = meaned.var(0).mean().item()
             stats['batch_var'].append(batch_var)
 
-        print(loss.item(), acc, batch_var, test_norm, loop_model.pretrace.model.layers.control_synapse.weight.grad.norm().item(), target[0].item())
-
+        #print(loss.item(), acc, batch_var, test_norm, loop_model.pretrace.model.layers.control_synapse.weight.grad.norm().item()*20, target[0].item())
 
         sumloss += loss.item()
         sumacc += acc
@@ -203,7 +209,7 @@ while i < ITERATIONS:
             optimizer = optim.Adam(params, lr=lr)
             print('Learning Rate: ', lr)
         i += 1
-    pickle.dump(stats, open('stats', 'wb'))
+    pickle.dump(stats, open('stats_2', 'wb'))
     #model.save('../../models/adap_clip5_'+str(k))
     #post_model.save('../../models/post_big11_'+str(k))
 

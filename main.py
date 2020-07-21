@@ -1,3 +1,11 @@
+import torch
+
+torch.manual_seed(0)
+
+from Code import run_exp2
+#from Code import run_exp
+
+'''
 #%%
 
 import torch
@@ -130,3 +138,4 @@ for i in range(1000):
     out.sum().backward()
 print(time.time()-start)
 
+'''

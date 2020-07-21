@@ -7,4 +7,4 @@ docker build -t imrsnn . \
 --rm \
 -t \
 imrsnn \
-python3 Code/run_exp.py
+python3 Code/run_exp2.py

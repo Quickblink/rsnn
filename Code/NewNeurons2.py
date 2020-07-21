@@ -148,7 +148,7 @@ class AdaptiveNeuron(nn.Module):
         self.out_size = size
 
     def get_initial_state(self, batch_size):
-        h = [self.initial_mem.expand([batch_size, self.in_size]), torch.ones([batch_size, self.in_size], device=self.initial_mem.device), self.get_initial_output(batch_size)]
+        h = [self.initial_mem.expand([batch_size, self.in_size]), torch.zeros([batch_size, self.in_size], device=self.initial_mem.device), self.get_initial_output(batch_size)]
         return tuple(h)
 
     def get_initial_output(self, batch_size):
@@ -163,9 +163,9 @@ class AdaptiveNeuron(nn.Module):
         rel_thresh = self.decay * rel_thresh + (1-self.decay) * old_spike
         threshold = 1 + rel_thresh * self.scale
         if self.omb:
-            mem = self.beta * old_mem + (1-self.beta) * x - old_spike
+            mem = self.beta * old_mem + (1-self.beta) * x - old_spike * threshold
         else:
-            mem = self.beta * old_mem + x - old_spike
+            mem = self.beta * old_mem + x - old_spike * threshold
         spikes = self.spike_fn((old_mem - threshold)/threshold)
         #spikes = torch.where(old_spike > 0, torch.zeros_like(spikes), spikes)
         #threshold = 1 + self.decay * (threshold - 1) + spikes
@@ -195,7 +195,6 @@ class LIFNeuron(nn.Module):
         return self.spike_fn(self.initial_mem.expand([batch_size, self.in_size]) - 1)
 
     def forward(self, x, h):
-
         new_h = [None, None]
         old_mem = h[0]
         old_spike = h[1]
@@ -205,6 +204,7 @@ class LIFNeuron(nn.Module):
             mem = self.beta * old_mem + x - old_spike
         spikes = self.spike_fn(old_mem - 1)
         #spikes = torch.where(old_spike > 0, torch.zeros_like(spikes), spikes)
+        #print(mem[0, 0])
         new_h[0] = mem
         new_h[1] = spikes
 
