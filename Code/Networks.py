@@ -272,3 +272,15 @@ class DummyNeuron(nn.Module):
     def forward(self, x, h):
         return x, ()
 
+class MeanModule(nn.Module):
+    def __init__(self, size, last_index):
+        super().__init__()
+        self.in_size = size
+        self.out_size = size
+        self.last_index = last_index
+
+    def get_initial_state(self, batch_size):
+        return ()
+
+    def forward(self, x, h):
+        return x[self.last_index:].mean(dim=0), ()
