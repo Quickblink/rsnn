@@ -20,7 +20,7 @@ def load_config(id):
 
 def start_process(id):
     config = load_config(id)
-    processes[id]['obj'] = Popen(config['cmd'], stdout=PIPE, stdin=PIPE, shell=True) #, text=True, bufsize=1
+    processes[id]['obj'] = Popen(config['cmd'], shell=True) #, text=True, bufsize=1
     print(id, ' started.')
 
 
