@@ -2,8 +2,8 @@ import torch
 
 torch.manual_seed(0)
 
-from Code import run_exp2
-#from Code import run_exp
+#from Code import run_exp2
+from Code import run_exp
 
 '''
 #%%

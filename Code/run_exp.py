@@ -106,7 +106,7 @@ outer = OrderedDict([
     ('input', 81),
     ('loop', [['input'], make_SequenceWrapper(ParallelNetwork(loop), USE_JIT), None]),
     ('mean', [['loop'], MeanModule(n_control+n_mem, -56), None]),
-    ('output', [['control', 'mem'], DummyNeuron(10, None), nn.Linear]),
+    ('output', [['mean'], DummyNeuron(10, None), nn.Linear]),
 ])
 
 model = OuterWrapper(DynNetwork(outer), device, USE_JIT)
