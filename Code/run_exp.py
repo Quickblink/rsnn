@@ -170,7 +170,8 @@ stats = {
     'grad_norm': [],
     'loss': [],
     'acc': [],
-    'batch_var': []
+    'batch_var': [],
+    'val': []
 }
 
 grad_norm_history = []
@@ -179,6 +180,22 @@ def record_norm():
     for p in params:
         norms.append(p.grad.norm().item())
     stats['grad_norm'].append(torch.tensor(norms).norm().item())
+
+
+def validate():
+    with torch.no_grad():
+        i = 0
+        acc = 0
+        for inp, target in test_loader:
+            x = inp.view(inp.shape[0], -1, 1).transpose(0, 1).to(device)
+            x = encode_input(x[1:], x[:-1])
+            target = target.to(device)
+            outputs, _ = model(x)
+            choice = torch.argmax(outputs, 1)
+            acc += (choice == target).float().mean()
+            i += 1
+        stats['val'].append((acc/i).item())
+        #print('Acc: ' + str(acc / i))
 
 
 ITERATIONS = 36000
@@ -229,7 +246,8 @@ while i < ITERATIONS:
             optimizer = optim.Adam(params, lr=lr)
             print('Learning Rate: ', lr)
         i += 1
-    pickle.dump(stats, open('stats', 'wb'))
+    validate()
+    #pickle.dump(stats, open('stats', 'wb'))
     config['stats'] = stats
     config['mem_req'] = torch.cuda.max_memory_allocated()
     with open('configs/' + run_id + '.json', 'w') as config_file:
