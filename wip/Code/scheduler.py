@@ -1,7 +1,8 @@
-from subprocess import PIPE, Popen, check_output
+from subprocess import PIPE, Popen
 from time import sleep
 from threading import Thread, BoundedSemaphore
 import json
+import signal
 
 sem = BoundedSemaphore()
 
@@ -10,14 +11,7 @@ nq = []
 
 processes = {}
 
-
-def get_free_memory():
-    result = check_output(
-        [
-            'nvidia-smi', '--query-gpu=memory.free',
-            '--format=csv,nounits,noheader'
-        ], encoding='utf-8')
-    return int(result)#gpu_memory_map
+total_mem = 15000000000
 
 def load_config(id):
     with open('configs/'+id+'.json') as file:
@@ -34,10 +28,14 @@ def start_process(id):
 def update(info=False):
     #print('Update called.')
     with sem:
+        mem_used = 0
         running = []
         for p in processes:
             try:
+                pr = load_config(p)['mem_req']
+                processes[p]['mem'] = pr
                 if processes[p]['obj'].poll() == None:
+                    mem_used += pr
                     running.append(p)
             except BaseException as exc:
                 print(exc)
@@ -45,9 +43,10 @@ def update(info=False):
             try:
                 pr = load_config(nq[-1])['mem_req']
                 #print(total_mem, pr)
-                if get_free_memory() > pr:
+                if total_mem - mem_used > pr:
                     processes[nq[-1]] = {'mem': pr}
                     start_process(nq[-1])
+                    mem_used += pr
                     nq.pop()
                 else:
                     break
@@ -87,6 +86,11 @@ while True:
                 print(tokens[2], ' terminated.')
             else:
                 print(tokens[2], 'could not be stopped.')
+    if tokens[0] == 'setbudget':
+        try:
+            total_mem = int(tokens[1])
+        except BaseException as exc:
+            print(exc)
     #if tokens[0] == 'print' and tokens[1] in processes:
     #    print(processes[tokens[1]]['obj'].stdout.read())
     update(info=(tokens[0] == 'info'))
