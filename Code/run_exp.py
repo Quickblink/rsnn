@@ -43,7 +43,9 @@ like_bellec = {
     'mem_neuron' : 'Adaptive',
     'lr' : 1e-2,
     '1-beta': True,
-    'decay_out': True
+    'decay_out': True,
+    'ported_weights': True,
+    'NoBias': True
 }
 
 #spec = like_bellec
@@ -117,30 +119,34 @@ model = OuterWrapper(DynNetwork(outer), device, USE_JIT)
 
 #final_linear = nn.Linear(n_control+n_mem, 10).to(device)
 
+if spec['ported_weights']:
+    o_weights = pickle.load(open('weight_transplant_enc', 'rb'))
 
-o_weights = pickle.load(open('weight_transplant_enc', 'rb'))
+    o1 = torch.tensor(o_weights['RecWeights/RecurrentWeight:0']).t()
+    o2 = torch.tensor(o_weights['InputWeights/InputWeight:0']).t()
+    o3 = torch.cat((o2, o1), dim=1)
+    with torch.no_grad():
+        model.pretrace.layers.loop.model.layers.control_synapse.weight.data[:,:300] = o3[:120] if spec['architecture'] == '1L' else o3[:120, :181]
+        model.pretrace.layers.loop.model.layers.mem_synapse.weight.data[:,:300] = o3[120:] if spec['architecture'] == '1L' else o3[120:, 180:]
+        model.pretrace.layers.output_synapse.weight.data = torch.tensor(o_weights['out_weight:0']).t()
 
+params= model.parameters()
 
-o1 = torch.tensor(o_weights['RecWeights/RecurrentWeight:0']).t()
-o2 = torch.tensor(o_weights['InputWeights/InputWeight:0']).t()
-o3 = torch.cat((o2, o1), dim=1)
-with torch.no_grad():
-    model.pretrace.layers.loop.model.layers.control_synapse.bias *= 0
-    model.pretrace.layers.loop.model.layers.mem_synapse.bias *= 0
-    model.pretrace.layers.loop.model.layers.control_synapse.weight.data[:,:300] = o3[:120]
-    model.pretrace.layers.loop.model.layers.mem_synapse.weight.data[:,:300] = o3[120:]
-    model.pretrace.layers.output_synapse.bias *= 0
-    model.pretrace.layers.output_synapse.weight.data = torch.tensor(o_weights['out_weight:0']).t()
+if spec['NoBias']:
+    with torch.no_grad():
+        model.pretrace.layers.loop.model.layers.control_synapse.bias *= 0
+        model.pretrace.layers.loop.model.layers.mem_synapse.bias *= 0
+        model.pretrace.layers.output_synapse.bias *= 0
+    params = [model.pretrace.layers.loop.model.layers.control_synapse.weight,
+              model.pretrace.layers.loop.model.layers.mem_synapse.weight, model.pretrace.layers.output_synapse.bias,
+              model.pretrace.layers.output_synapse.weight]
+
 model.to(device)
 
-#TODO: remove
-params = [model.pretrace.layers.loop.model.layers.control_synapse.weight, model.pretrace.layers.loop.model.layers.mem_synapse.weight, model.pretrace.layers.output_synapse.bias, model.pretrace.layers.output_synapse.weight]
 
-#TODO: revert all this
-#params = list(loop_model.parameters())+list(final_linear.parameters())
+
 lr = spec['lr']
 optimizer = optim.Adam(params, lr=lr)
-#optimizer = optim.SGD(params, lr=lr)
 ce = nn.CrossEntropyLoss()
 
 '''

@@ -26,7 +26,7 @@ def load_config(id):
 
 def start_process(id):
     config = load_config(id)
-    processes[id]['obj'] = Popen(config['cmd'], stdout=PIPE, shell=True) #, text=True, bufsize=1
+    processes[id]['obj'] = Popen(config['cmd'], stdout=PIPE, shell=True, text=True) #, text=True, bufsize=1
     print(id, ' started.')
 
 
@@ -39,6 +39,12 @@ def update(info=False):
             try:
                 if processes[p]['obj'].poll() == None:
                     running.append(p)
+                else:
+                    out, _ = processes[p]['obj'].communicate()
+                    last = '\n'.join(out.split('\n')[-20:])
+                    print(last)
+                    del processes[p]
+                    break
             except BaseException as exc:
                 print(exc)
         while nq:
