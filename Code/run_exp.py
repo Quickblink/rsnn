@@ -130,7 +130,7 @@ if spec['ported_weights']:
         model.pretrace.layers.loop.model.layers.mem_synapse.weight.data[:,:300] = o3[120:] if spec['architecture'] == '1L' else o3[120:, 180:]
         model.pretrace.layers.output_synapse.weight.data = torch.tensor(o_weights['out_weight:0']).t()
 
-params= model.parameters()
+params = list(model.parameters())
 
 if spec['NoBias']:
     with torch.no_grad():
