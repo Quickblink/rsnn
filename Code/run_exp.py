@@ -255,7 +255,7 @@ while i < ITERATIONS:
     validate()
     #pickle.dump(stats, open('stats', 'wb'))
     config['stats'] = stats
-    config['mem_req'] = torch.cuda.max_memory_allocated()
+    #config['mem_req'] = torch.cuda.max_memory_allocated()
     with open('configs/' + run_id + '.json', 'w') as config_file:
         json.dump(config, config_file, indent=2)
     model.save('models/'+run_id)
