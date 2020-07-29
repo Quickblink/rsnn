@@ -34,11 +34,12 @@ def start_process(id):
 def update(info=False):
     #print('Update called.')
     with sem:
-        running = []
+        running = {}
         for p in processes:
             try:
                 if processes[p]['obj'].poll() == None:
-                    running.append(p)
+                    if info:
+                        running[p] = load_config(p)['progress']
                 else:
                     out, _ = processes[p]['obj'].communicate()
                     last = '\n'.join(out.split('\n')[-20:])

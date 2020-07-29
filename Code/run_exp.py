@@ -42,6 +42,7 @@ like_bellec = {
     'control_neuron': 'LIF',
     'mem_neuron' : 'Adaptive',
     'lr' : 1e-2,
+    'lr_decay': 0.8,
     '1-beta': True,
     'decay_out': True,
     'ported_weights': True,
@@ -248,13 +249,14 @@ while i < ITERATIONS:
             sumloss = 0
             sumacc = 0
         if i%2500 == 0:
-            lr = lr * 0.8
+            lr = lr * spec['lr_decay']
             optimizer = optim.Adam(params, lr=lr)
             print('Learning Rate: ', lr)
         i += 1
     validate()
     #pickle.dump(stats, open('stats', 'wb'))
     config['stats'] = stats
+    config['progress'] = i
     #config['mem_req'] = torch.cuda.max_memory_allocated()
     with open('configs/' + run_id + '.json', 'w') as config_file:
         json.dump(config, config_file, indent=2)

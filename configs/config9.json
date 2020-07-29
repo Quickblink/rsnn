@@ -1,0 +1,19 @@
+{
+  "cmd": "docker build -t imrsnn . && nvidia-docker run -v /home/ubuntu/eric/rsnn:/home/developer --name config9 --net host --ipc host --rm -t imrsnn python3 Code/run_exp.py config9",
+  "mem_req": 3000,
+  "params": {
+    "spkfn": "ss",
+    "spkconfig": 0,
+    "architecture": "1L",
+    "beta": 0.95,
+    "control_neuron": "LIF",
+    "mem_neuron": "Adaptive",
+    "lr": 0.01,
+    "lr_decay": 0.6,
+    "1-beta": false,
+    "decay_out": true,
+    "ported_weights": true,
+    "NoBias": true
+  },
+  "progress": 0
+}
