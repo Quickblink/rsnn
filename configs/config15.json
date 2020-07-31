@@ -1,5 +1,5 @@
 {
-  "cmd": "docker build -t imrsnn . && nvidia-docker run -v /home/ubuntu/eric/rsnn:/home/developer --name config11 --net host --ipc host --rm -t imrsnn python3 Code/run_exp.py config11",
+  "cmd": "docker build -t imrsnn . && nvidia-docker run -v /home/ubuntu/eric/rsnn:/home/developer --name config15 --net host --ipc host --rm -t imrsnn python3 Code/run_exp.py config15",
   "mem_req": 3000,
   "params": {
     "spkfn": "bellec",
