@@ -141,6 +141,10 @@ if spec['NoBias']:
     params = [model.pretrace.layers.loop.model.layers.control_synapse.weight,
               model.pretrace.layers.loop.model.layers.mem_synapse.weight, model.pretrace.layers.output_synapse.bias,
               model.pretrace.layers.output_synapse.weight]
+    if spec['NoBias'] == 'addBias':
+        params += [model.pretrace.layers.loop.model.layers.control_synapse.bias,
+                   model.pretrace.layers.loop.model.layers.mem_synapse.bias]
+
 
 model.to(device)
 
