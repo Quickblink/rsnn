@@ -62,7 +62,7 @@ from Code.NewNeurons2 import SeqOnlySpike, CooldownNeuron, OutputNeuron, LIFNeur
 
 built_config = {
     'BETA': spec['beta'],
-    'OFFSET': 2, # TODO: this?
+    'OFFSET': 3, # TODO: why 2?
     'SPIKE_FN': spec['spkfn'],
     '1-beta': spec['1-beta'],
     'ADAPDECAY': 0.9985,
@@ -114,7 +114,6 @@ outer = OrderedDict([
 
 model = OuterWrapper(DynNetwork(outer), device, USE_JIT)
 
-#TODO: use one model
 
 #loop_model = OuterWrapper(make_SequenceWrapper(ParallelNetwork(loop), USE_JIT), device, USE_JIT)
 
