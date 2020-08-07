@@ -27,7 +27,7 @@ class SuperSpike(torch.autograd.Function):
     as this was done in Zenke & Ganguli (2018).
     """
 
-    scale = 4.0#2.0#100.0  # controls steepness of surrogate gradient
+    scale = 2.0#2.0#100.0  # controls steepness of surrogate gradient #TODO: make this a config parameter
 
     @staticmethod
     def forward(ctx, input):

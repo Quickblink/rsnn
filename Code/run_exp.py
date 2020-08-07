@@ -62,11 +62,16 @@ from Code.NewNeurons2 import SeqOnlySpike, CooldownNeuron, OutputNeuron, LIFNeur
 
 built_config = {
     'BETA': spec['beta'],
-    'OFFSET': 3, # TODO: why 2?
+    'OFFSET': 7, # TODO: was 3 for config24
     'SPIKE_FN': spec['spkfn'],
     '1-beta': spec['1-beta'],
     'ADAPDECAY': 0.9985,
     'ADAPSCALE': 180
+}
+
+mem_config = {
+    **built_config,
+    'BETA': spec['mem_beta']
 }
 
 n_control = 120
@@ -85,7 +90,7 @@ mem_lookup = {
 }
 
 control_neuron = control_lookup[spec['control_neuron']](n_control, built_config)
-mem_neuron = mem_lookup[spec['mem_neuron']](n_mem, built_config)
+mem_neuron = mem_lookup[spec['mem_neuron']](n_mem, mem_config)
 out_neuron = OutputNeuron(n_control+n_mem, built_config) if spec['decay_out'] else DummyNeuron(n_control+n_mem, built_config)
 
 
