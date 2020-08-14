@@ -47,7 +47,7 @@ def update(info=False):
                     del processes[p]
                     break
             except BaseException as exc:
-                print(exc)
+                print('Exception!', exc)
         while nq:
             try:
                 pr = load_config(nq[-1])['mem_req']

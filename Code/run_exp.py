@@ -158,6 +158,9 @@ lr = spec['lr']
 optimizer = optim.Adam(params, lr=lr)
 ce = nn.CrossEntropyLoss()
 
+ITERATIONS = spec['iterations']#36000
+
+
 '''
 
 #TODO: check correctness here
@@ -212,8 +215,6 @@ def validate():
         stats['val'].append((acc/i).item())
         #print('Acc: ' + str(acc / i))
 
-
-ITERATIONS = 36000
 
 start = time.time()
 i = 1
