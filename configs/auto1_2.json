@@ -1,0 +1,21 @@
+{
+  "cmd": "docker build -t imrsnn . && nvidia-docker run -v /home/ubuntu/eric/rsnn:/home/developer --name auto1_2 --net host --ipc host --rm -t imrsnn python3 Code/run_exp.py auto1_2",
+  "mem_req": 4000,
+  "params": {
+    "beta": 0.9,
+    "lr": 0.01,
+    "lr_decay": 0.8,
+    "1-beta": false,
+    "ported_weights": true,
+    "NoBias": true,
+    "iterations": 5000,
+    "batch_size": 128,
+    "mem_beta": 0.95,
+    "spkfn": "bellec",
+    "decay_out": true,
+    "architecture": "1L",
+    "control_neuron": "Disc",
+    "mem_neuron": "NoReset"
+  },
+  "progress": 0
+}

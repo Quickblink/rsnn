@@ -12,12 +12,21 @@ from torch.utils.data import DataLoader
 import pickle
 import json
 
-#TODO: change to 256
-BATCH_SIZE = 256
+
+run_id = sys.argv[1]
+#print(sys.argv)
+with open('configs/'+run_id+'.json', 'r') as config_file:
+    config = json.load(config_file)
+    spec = config['params']
+
+
+#TODO: was 256
+BATCH_SIZE = spec['batch_size']
 
 USE_JIT = False
 
 device = torch.device('cuda')
+
 
 
 mnist = MNIST('.', transform=transforms.ToTensor(), download=True) #distortion_transform([0,15], 3)
@@ -26,13 +35,9 @@ test = MNIST('.', transform=transforms.ToTensor(), train=False)
 
 data_loader = DataLoader(mnist, batch_size=BATCH_SIZE, drop_last=True, num_workers=0, shuffle=True)
 
-test_loader = DataLoader(test, batch_size=1024, drop_last=False, num_workers=0)
+test_loader = DataLoader(test, batch_size=BATCH_SIZE, drop_last=False, num_workers=0)
 
-run_id = sys.argv[1]
-#print(sys.argv)
-with open('configs/'+run_id+'.json', 'r') as config_file:
-    config = json.load(config_file)
-    spec = config['params']
+
 
 like_bellec = {
     'spkfn' : 'bellec',
@@ -112,7 +117,7 @@ loop = loop_1L if spec['architecture'] == '1L' else loop_2L
 
 outer = OrderedDict([
     ('input', 81),
-    ('loop', [['input'], make_SequenceWrapper(ParallelNetwork(loop), USE_JIT), None]),
+    ('loop', [['input'], make_SequenceWrapper(ParallelNetwork(loop, bias=(not spec['NoBias'])), USE_JIT), None]),
     ('mean', [['loop'], MeanModule(n_control+n_mem, -56), None]),
     ('output', [['mean'], DummyNeuron(10, None), nn.Linear]),
 ])
@@ -137,6 +142,7 @@ if spec['ported_weights']:
 
 params = list(model.parameters())
 
+'''
 if spec['NoBias']:
     with torch.no_grad():
         model.pretrace.layers.loop.model.layers.control_synapse.bias *= 0
@@ -149,7 +155,7 @@ if spec['NoBias']:
         params += [model.pretrace.layers.loop.model.layers.control_synapse.bias,
                    model.pretrace.layers.loop.model.layers.mem_synapse.bias]
 
-
+'''
 model.to(device)
 
 
@@ -224,6 +230,7 @@ k = 0
 while i < ITERATIONS:
     print('Epoch: ', k)
     k = k + 1
+    validate()
     for inp, target in data_loader:
         batchstart = time.time()
         x = inp.view(BATCH_SIZE, -1, 1).transpose(0,1).to(device)
@@ -262,7 +269,6 @@ while i < ITERATIONS:
             optimizer = optim.Adam(params, lr=lr)
             print('Learning Rate: ', lr)
         i += 1
-    validate()
     #pickle.dump(stats, open('stats', 'wb'))
     config['stats'] = stats
     config['progress'] = i

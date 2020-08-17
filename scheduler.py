@@ -1,5 +1,5 @@
 from subprocess import PIPE, Popen, check_output
-from time import sleep
+from time import sleep, time
 from threading import Thread, BoundedSemaphore
 import json
 
@@ -10,6 +10,7 @@ nq = []
 
 processes = {}
 
+last_start = 0
 
 def get_free_memory():
     result = check_output(
@@ -26,7 +27,9 @@ def load_config(id):
 
 def start_process(id):
     config = load_config(id)
-    processes[id]['obj'] = Popen(config['cmd'], stdout=PIPE, shell=True, text=True) #, text=True, bufsize=1
+    f = open('outputs/'+id+'.txt', 'w')
+    processes[id]['out'] = f
+    processes[id]['obj'] = Popen(config['cmd'], stdout=f, shell=True, text=True) #, text=True, bufsize=1
     print(id, ' started.')
 
 
@@ -34,6 +37,7 @@ def start_process(id):
 def update(info=False):
     #print('Update called.')
     with sem:
+        global last_start
         running = {}
         for p in processes:
             try:
@@ -41,14 +45,15 @@ def update(info=False):
                     if info:
                         running[p] = load_config(p)['progress']
                 else:
-                    out, _ = processes[p]['obj'].communicate()
-                    last = '\n'.join(out.split('\n')[-20:])
-                    print(last)
+                    #out, _ = processes[p]['obj'].communicate()
+                    #last = '\n'.join(out.split('\n')[-20:])
+                    #print(last)
+                    processes[p]['out'].close()
                     del processes[p]
                     break
             except BaseException as exc:
                 print('Exception!', exc)
-        while nq:
+        if nq and (time()-last_start > 60):
             try:
                 pr = load_config(nq[-1])['mem_req']
                 #print(total_mem, pr)
@@ -56,13 +61,12 @@ def update(info=False):
                     processes[nq[-1]] = {'mem': pr}
                     start_process(nq[-1])
                     nq.pop()
-                else:
-                    break
+                    last_start = time()
             except BaseException as exc:
                 popped = nq.pop()
                 if popped in processes:
                     del processes[popped]
-                print(exc)
+                print('Exception!', exc)
                 print(popped, ' removed from queue.')
         if info:
             print('Running: ', running)
@@ -86,6 +90,10 @@ while True:
         if tokens[1] == 'id':
             nq.insert(0, tokens[2])
             print(tokens[2], ' added to queue.')
+        if tokens[1] == 'range':
+            for i in range(int(tokens[3]), int(tokens[4])):
+                nq.insert(0, tokens[2]+str(i))
+            print('Range added to queue.')
     if tokens[0] == 'stop':
         if tokens[1] == 'id':
             if tokens[2] in processes and processes[tokens[2]]['obj'].poll() == None:

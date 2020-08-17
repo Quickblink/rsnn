@@ -6,7 +6,7 @@ import torch.nn.functional as F
 
 # inputs, neuron, synapse
 class ParallelNetwork(nn.Module):
-    def __init__(self, architecture):
+    def __init__(self, architecture, bias=True):
         super().__init__()
         self.architecture = copy.deepcopy(architecture)
         self.in_size = self.architecture['input']
@@ -19,7 +19,7 @@ class ParallelNetwork(nn.Module):
                 n = 0
                 for ilay in params[0]:
                     n += self.in_size if ilay == 'input' else self.architecture[ilay][1].out_size
-                self.layers[layer+'_synapse'] = params[2](n, params[1].in_size)
+                self.layers[layer+'_synapse'] = params[2](n, params[1].in_size, bias=bias)
             self.layers[layer] = params[1]
             if layer != 'output':
                 self.recurrent_layers.append(layer)
