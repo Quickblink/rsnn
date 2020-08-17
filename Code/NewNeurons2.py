@@ -67,9 +67,14 @@ class SeqOnlySpike(nn.Module):
             self.spike_fn = SuperSpike.apply
         self.in_size = size
         self.out_size = size
+        self.register_buffer('device_zero', torch.zeros(1, requires_grad=False))
+
 
     def get_initial_state(self, batch_size):
         return ()
+
+    def get_initial_output(self, batch_size):
+        return self.device_zero.expand([batch_size, self.in_size])
 
     def forward(self, x, h):
         return self.spike_fn(x), ()
