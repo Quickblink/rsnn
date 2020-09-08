@@ -63,7 +63,7 @@ like_bellec = {
 
 
 from Code.Networks import Selector, DynNetwork, OuterWrapper, LSTMWrapper, ReLuWrapper, DummyNeuron, make_SequenceWrapper, ParallelNetwork, MeanModule
-from Code.NewNeurons2 import SeqOnlySpike, CooldownNeuron, OutputNeuron, LIFNeuron, NoResetNeuron, AdaptiveNeuron
+from Code.NewNeurons2 import SeqOnlySpike, CooldownNeuron, OutputNeuron, LIFNeuron, NoResetNeuron, AdaptiveNeuron, FlipFlopNeuron
 
 built_config = {
     'BETA': spec['beta'],
@@ -91,7 +91,8 @@ control_lookup = {
 mem_lookup = {
     'Adaptive': AdaptiveNeuron,
     'Cooldown': CooldownNeuron,
-    'NoReset': NoResetNeuron
+    'NoReset': NoResetNeuron,
+    'FlipFlop': FlipFlopNeuron
 }
 
 control_neuron = control_lookup[spec['control_neuron']](n_control, built_config)
