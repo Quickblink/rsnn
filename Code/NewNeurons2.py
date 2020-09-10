@@ -58,6 +58,54 @@ class SuperSpike(torch.autograd.Function):
         return out #torch.where((out == 0), torch.ones([1]) * 0.001, out)
 
 
+class FlipFlopSpike(torch.autograd.Function):
+
+    @staticmethod
+    def forward(ctx, input, last):
+        ctx.save_for_backward(input)
+        return ((input > 1) | ((input > -1) & (last > 0))).float()
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        input, = ctx.saved_tensors
+        to_input = grad_output * 0.9 * (1 / (2*torch.abs(input + 1) + 1.0) ** 2 + 1 / (2*torch.abs(input - 1) + 1.0) ** 2) #10 #work out doubly spiked function
+        return to_input, torch.zeros_like(to_input)
+
+
+class FlipFlopNeuron(nn.Module):
+    def __init__(self, size, params):
+        super().__init__()
+        self.beta = params['BETA']
+        self.omb = params['1-beta']
+        self.spike_fn = FlipFlopSpike.apply
+        self.initial_mem = nn.Parameter(torch.zeros([size]), requires_grad=True)
+        self.register_buffer('initial_out', torch.ones([size], requires_grad=False))
+        self.initial_out[(size//2):] *= 0
+        self.in_size = size
+        self.out_size = size
+
+    def get_initial_state(self, batch_size):
+        state = {
+            'mem': self.initial_mem.expand([batch_size, self.in_size]),
+            'spikes': self.initial_out.expand([batch_size, self.in_size])
+        }
+        return state
+
+    def get_initial_output(self, batch_size):
+        return self.initial_out.expand([batch_size, self.in_size])
+
+    def forward(self, x, h):
+        mem = h['mem']
+        old_spikes = h['spikes']
+        n_state = {}
+        if self.omb:
+            n_state['mem'] = self.beta * mem + (1-self.beta) * x
+        else:
+            n_state['mem'] = self.beta * mem + x
+        n_state['spikes'] = self.spike_fn(n_state['mem'], old_spikes.detach())
+        return n_state['spikes'], n_state
+
+
 class SeqOnlySpike(nn.Module):
     def __init__(self, size, params):
         super().__init__()
