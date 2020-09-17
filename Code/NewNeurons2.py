@@ -189,7 +189,12 @@ class AdaptiveNeuron(nn.Module):
     def __init__(self, size, params):
         super().__init__()
         self.beta = params['BETA']
-        self.omb = params['1-beta']
+        if params['1-beta'] == 'improved':
+            self.factor = (1 - self.beta ** 2) ** (0.5)
+        elif params['1-beta']:
+            self.factor = (1-self.beta)
+        else:
+            self.factor = 1
         self.decay = params['ADAPDECAY']
         self.scale = params['ADAPSCALE']
         if params['SPIKE_FN'] == 'bellec':
@@ -215,10 +220,7 @@ class AdaptiveNeuron(nn.Module):
         old_spike = h[2]
         rel_thresh = self.decay * rel_thresh + (1-self.decay) * old_spike
         threshold = 1 + rel_thresh * self.scale
-        if self.omb:
-            mem = self.beta * old_mem + (1-self.beta) * x - old_spike * threshold
-        else:
-            mem = self.beta * old_mem + x - old_spike * threshold
+        mem = self.beta * old_mem + self.factor * x - old_spike * threshold
         spikes = self.spike_fn((old_mem - threshold)/threshold)
         #spikes = torch.where(old_spike > 0, torch.zeros_like(spikes), spikes)
         #threshold = 1 + self.decay * (threshold - 1) + spikes
@@ -231,7 +233,12 @@ class LIFNeuron(nn.Module):
     def __init__(self, size, params):
         super(LIFNeuron, self).__init__()
         self.beta = params['BETA']
-        self.omb = params['1-beta']
+        if params['1-beta'] == 'improved':
+            self.factor = (1 - self.beta ** 2) ** (0.5)
+        elif params['1-beta']:
+            self.factor = (1-self.beta)
+        else:
+            self.factor = 1
         if params['SPIKE_FN'] == 'bellec':
             self.spike_fn = BellecSpike.apply
         else:
@@ -251,10 +258,7 @@ class LIFNeuron(nn.Module):
         new_h = [None, None]
         old_mem = h[0]
         old_spike = h[1]
-        if self.omb:
-            mem = self.beta * old_mem + (1-self.beta) * x - old_spike
-        else:
-            mem = self.beta * old_mem + x - old_spike
+        mem = self.beta * old_mem + self.factor * x - old_spike
         spikes = self.spike_fn(old_mem - 1)
         #spikes = torch.where(old_spike > 0, torch.zeros_like(spikes), spikes)
         #print(mem[0, 0])

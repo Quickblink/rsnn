@@ -1,0 +1,11 @@
+{
+  "cmd": "docker build -t imrsnn . && nvidia-docker run -v /home/ubuntu/eric/rsnn:/home/developer --name lstm1 --net host --ipc host --rm -t imrsnn python3 Code/run_exp_lstm.py lstm1",
+  "mem_req": 4000,
+  "params": {
+    "lr": 0.005,
+    "lr_decay": 0.8,
+    "iterations": 36000,
+    "batch_size": 256
+  },
+  "progress": 0
+}
