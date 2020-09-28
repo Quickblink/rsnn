@@ -407,7 +407,6 @@ class MeanModule(BaseNeuron):
 class NoResetNeuron(BaseNeuron):
     def __init__(self, size, params):
         super().__init__(size, None)
-        self.target_rate = params['target_rate']
         self.beta = params['BETA']
         if params['1-beta'] == 'improved':
             self.factor = (1 - self.beta ** 2) ** (0.5)
