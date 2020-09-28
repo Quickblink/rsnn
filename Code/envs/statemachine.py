@@ -44,13 +44,14 @@ def make_batch(batch_size, length, device, n_in):
     data.scatter_(-1, ind, torch.ones([1]).expand_as(data))
     return data, ind
 
-
-
-def run(model, lookup, batch_size, seql, char_dur, perm_num, device, logging=False):
+def make_rythm(batch_size, seql, char_dur, device):
     with torch.no_grad():
         rythm = torch.diag(torch.ones([char_dur], device=device))
-        # rythm *= 0
         rythm = rythm.expand(seql, char_dur, char_dur).reshape(seql * char_dur, 1, char_dur).expand(seql * char_dur, batch_size, char_dur)
+        return rythm
+
+
+def run1(model, lookup, rythm, batch_size, seql, char_dur, perm_num, device, logging=False):
 
     input, raw_inp = make_batch(batch_size, seql, device, perm_num)
 
@@ -68,4 +69,26 @@ def run(model, lookup, batch_size, seql, char_dur, perm_num, device, logging=Fal
 
     acc = (out_class[1:] == targets[:-1]).float().mean().item()
 
-    return acc, loss, (dir_out[2] if logging else None)
+    return acc, loss, ((input, dir_out[2]) if logging else None)
+
+def run(model, lookup, rythm, batch_size, seql, char_dur, perm_num, device, logging=False):
+    inp_dur = char_dur // 2
+    pause_dur = char_dur - inp_dur
+    input, raw_inp = make_batch(batch_size, seql, device, perm_num)
+    input = input.view(seql, 1, batch_size, perm_num).expand(seql, inp_dur, batch_size, perm_num)
+    input = torch.cat((input, torch.zeros((seql, pause_dur, batch_size, perm_num), device=device)), dim=1).view(seql*char_dur, batch_size, perm_num)
+    #input = input.repeat_interleave(char_dur, 0)
+    input = torch.cat((input, rythm), dim=-1)
+
+
+    dir_out = model(input, logging=logging)
+    output = dir_out[0]
+    output = output.view(seql, char_dur, batch_size, perm_num).mean(dim=1)
+    out_class = output.argmax(dim=-1, keepdim=True)
+    targets = lookup[out_class, raw_inp]
+
+    loss = nn.CrossEntropyLoss()(output[1:].view(-1, perm_num), targets[:-1].view(-1))
+
+    acc = (out_class[1:] == targets[:-1]).float().mean().item()
+
+    return acc, loss, ((input, dir_out[2]) if logging else None)
