@@ -9,7 +9,6 @@ from torchvision import transforms
 import time
 from collections import OrderedDict
 from torch.utils.data import DataLoader
-import pickle
 import json
 
 
@@ -37,7 +36,7 @@ test_loader = DataLoader(test, batch_size=BATCH_SIZE, drop_last=False, num_worke
 
 
 
-like_bellec = {
+sample_settings = {
     'spkfn' : 'bellec',
     'architecture': '1L',
     'beta': 0.95,
@@ -48,13 +47,6 @@ like_bellec = {
     '1-beta': True,
     'decay_out': True,
 }
-
-#spec = like_bellec
-
-#TODO: remove
-#spec['1-beta'] = False
-#spec['decay_out'] = False
-#spec['lr'] = 1e-3
 
 
 
@@ -78,7 +70,7 @@ mem_config = {
 
 n_control = 120
 n_mem = 100
-input_rate = None #TODO: get this
+input_rate = 0.03
 
 control_lookup = {
     'LIF': LIFNeuron,
