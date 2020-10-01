@@ -72,7 +72,7 @@ mem_config = {
 n_control = 220#120
 n_mem = 1#100
 input_rate = 0.03
-n_input = 80+1
+n_input = 80+28+30
 
 control_lookup = {
     'LIF': LIFNeuron,
@@ -161,20 +161,31 @@ ITERATIONS = spec['iterations']#36000
 
 
 '''
+
+#TODO: check correctness here
+
+with torch.no_grad():
+    for i in range(100):
+        loop_model.pretrace.model.layers.mem_synapse.weight[i, i+201] = 0
+
+    for i in range(120):
+        loop_model.pretrace.model.layers.control_synapse.weight[i, i+81] = 0
+
+'''
 with torch.no_grad():
     rythm = torch.diag(torch.ones([28], device=device))
     rythm = rythm.expand(30, 28, 28).reshape(30 * 28, 1, 28)[1:]
     rythm2 = torch.diag(torch.ones([30], device=device))
     rythm2 = rythm2.view(30, 1, 30).expand(30, 28, 30).reshape(30 * 28, 1, 30)[1:]
-'''
-trigger_signal = torch.ones([783+56, 1, 1], device=device)
-trigger_signal[:783] = 0
+
+#trigger_signal = torch.ones([783+56, 1, 1], device=device)
+#trigger_signal[:783] = 0
 def encode_input(curr, last):
     out = torch.zeros([783+56, curr.shape[1], 2,40], device=curr.device)
     out[:783, :, 0, :] = ((torch.arange(40, device=curr.device) < 40 * last) & (torch.arange(40, device=curr.device) > 40 * curr)).float()
     out[:783, :, 1, :] = ((torch.arange(40, device=curr.device) > 40 * last) & (torch.arange(40, device=curr.device) < 40 * curr)).float()
-    out = torch.cat((out.view([783+56, curr.shape[1], 80]), trigger_signal.expand([783+56, curr.shape[1], 1])), dim=-1)
-    #out = torch.cat((out.view([783+56, curr.shape[1], 80]), rythm.expand([783+56, curr.shape[1], 28]), rythm2.expand([783+56, curr.shape[1], 30])), dim=-1)
+    #out = torch.cat((out.view([783+56, curr.shape[1], 80]), trigger_signal.expand([783+56, curr.shape[1], 1])), dim=-1)
+    out = torch.cat((out.view([783+56, curr.shape[1], 80]), rythm.expand([783+56, curr.shape[1], 28]), rythm2.expand([783+56, curr.shape[1], 30])), dim=-1)
 
     return out
 

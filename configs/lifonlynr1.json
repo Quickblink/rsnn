@@ -1,0 +1,19 @@
+{
+  "cmd": "docker build -t imrsnn . && nvidia-docker run -v /home/ubuntu/eric/rsnn:/home/developer --name lifonlynr1 --net host --ipc host --rm -t imrsnn python3 Code/run_exp_new.py lifonlynr1",
+  "progress": 0,
+  "mem_req": 4000,
+  "params": {
+    "spkfn": "bellec",
+    "architecture": "1L",
+    "beta": 0.9,
+    "mem_beta": 0.95,
+    "control_neuron": "LIF",
+    "mem_neuron": "Adaptive",
+    "lr": 0.01,
+    "lr_decay": 0.8,
+    "1-beta": "improved",
+    "decay_out": false,
+    "iterations": 36000,
+    "batch_size": 256
+  }
+}

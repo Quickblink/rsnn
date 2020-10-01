@@ -2,7 +2,7 @@ import torch
 
 torch.manual_seed(0)
 
-from Code import run_exp_lstm
+from Code import run_exp_new
 #from Code import run_sr
 
 '''
