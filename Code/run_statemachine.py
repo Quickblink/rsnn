@@ -30,12 +30,12 @@ standard = {'beta': 0.8,
    'spkfn': 'bellec',
    'decay_out': False,
    'control_neuron': 'LIF',
+   'decay_change': 0.5,
 }
 
 example_spec = {
     **standard,
    '1-beta': 'improved',
-   'decay_change': 1,
    'architecture': '1L',
    'mem_neuron': 'Cooldown',
    'char_dur': 20,
@@ -63,12 +63,13 @@ n_control = 100
 n_mem = spec['n_mem']
 
 MAIN_DECAY = np.exp(-1/(CHAR_DUR*spec['decay_change']))
+ADAP_DECAY = np.exp(-1/(CHAR_DUR*5))
+
 INPUT_RATE = 1.5/n_input
 
 #%%
 
 MAIN_DECAY# = 0.99
-
 #%%
 
 from Code.everything4 import DynNetwork, OuterWrapper, BaseNeuron, SequenceWrapper, ParallelNetwork, \
@@ -80,7 +81,7 @@ built_config = {
     'OFFSET': -np.log(1-spec['beta']),#3
     'SPIKE_FN': spec['spkfn'],
     '1-beta': spec['1-beta'],
-    'ADAPDECAY': MAIN_DECAY, #0.9985,
+    'ADAPDECAY': ADAP_DECAY, #0.9985,
     'ADAPSCALE': 180
 }
 
