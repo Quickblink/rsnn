@@ -491,7 +491,7 @@ class LIFNeuron(NoResetNeuron):
 
     def forward(self, x, h):
         out, new_h = super().forward(x, h)
-        new_h['mem'] = new_h['mem'] - out#h['spikes']
+        new_h['mem'] = new_h['mem'] - out
         return out, new_h
 
 

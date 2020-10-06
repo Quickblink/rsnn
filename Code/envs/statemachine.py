@@ -40,8 +40,8 @@ def make_sequence(length, prob, device, perm_num):
 
 def make_batch(batch_size, length, device, n_in):
     data = torch.zeros((length, batch_size, n_in), device=device)
-    ind = torch.randint(n_in, (length, batch_size, 1))
-    data.scatter_(-1, ind, torch.ones([1]).expand_as(data))
+    ind = torch.randint(n_in, (length, batch_size, 1), device=device)
+    data.scatter_(-1, ind, torch.ones([1], device=device).expand_as(data))
     return data, ind
 
 def make_rythm(batch_size, seql, char_dur, device):
