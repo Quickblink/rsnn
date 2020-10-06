@@ -188,7 +188,7 @@ def record_norm():
 val_rythm = make_rythm(BATCH_SIZE, 100, CHAR_DUR, device)
 def validate():
     acc, _, _ = run(model, lookup, val_rythm, BATCH_SIZE, 100, CHAR_DUR, perm_num, device)
-    stats['val'].append((acc).item())
+    stats['val'].append(acc)
     print('Validation: ', acc)
 
 #%%
