@@ -11,6 +11,7 @@ from collections import OrderedDict
 
 from PIL import Image
 import numpy as np
+import json
 
 
 run_id = sys.argv[1]
