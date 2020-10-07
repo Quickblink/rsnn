@@ -1,0 +1,12 @@
+{
+  "cmd": "docker build -t imrsnn . && nvidia-docker run -v /home/ubuntu/eric/rsnn:/home/developer --name sm_cd_durs9 --net host --ipc host --rm -t imrsnn python3 Code/run_statemachine.py sm_cd_durs9",
+  "progress": 0,
+  "mem_req": 4000,
+  "params": {
+    "1-beta": "improved",
+    "architecture": "1L",
+    "mem_neuron": "Cooldown",
+    "char_dur": 16,
+    "n_mem": 10
+  }
+}
