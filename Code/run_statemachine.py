@@ -39,7 +39,8 @@ example_spec = {
    'architecture': '1L',
    'mem_neuron': 'Cooldown',
    'char_dur': 20,
-   'n_mem': 100
+   'n_mem': 100,
+   'main_decay': 'auto'
 }
 
 spec = {
@@ -62,8 +63,8 @@ n_out = perm_num
 n_control = 100
 n_mem = spec['n_mem']
 
-MAIN_DECAY = np.exp(-1/(CHAR_DUR*spec['decay_change']))
-ADAP_DECAY = np.exp(-1/(CHAR_DUR*5))
+MAIN_DECAY = np.exp(-1/(CHAR_DUR*spec['decay_change'])) if spec['main_decay'] == 'auto' else spec['main_decay']
+ADAP_DECAY = np.exp(-1/(CHAR_DUR*5)) if spec['main_decay'] == 'auto' else spec['main_decay']
 
 INPUT_RATE = 1.5/n_input
 
