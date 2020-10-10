@@ -63,14 +63,14 @@ n_out = perm_num
 n_control = 100
 n_mem = spec['n_mem']
 
-MAIN_DECAY = np.exp(-1/(CHAR_DUR*spec['decay_change'])) if spec['main_decay'] == 'auto' else spec['main_decay']
-ADAP_DECAY = np.exp(-1/(CHAR_DUR*5)) if spec['main_decay'] == 'auto' else spec['main_decay']
+MAIN_DECAY = np.exp(-1/(CHAR_DUR*spec['decay_change']))# if spec['main_decay'] == 'auto' else spec['main_decay']
+ADAP_DECAY = np.exp(-1/(CHAR_DUR*spec['decay_change']))# if spec['main_decay'] == 'auto' else spec['main_decay']
 
 INPUT_RATE = 1.5/n_input
 
 #%%
 
-MAIN_DECAY# = 0.99
+#MAIN_DECAY# = 0.99
 #%%
 
 from Code.everything4 import DynNetwork, OuterWrapper, BaseNeuron, SequenceWrapper, ParallelNetwork, \
@@ -79,7 +79,7 @@ from Code.everything4 import DynNetwork, OuterWrapper, BaseNeuron, SequenceWrapp
 
 built_config = {
     'BETA': spec['beta'],
-    'OFFSET': -np.log(1-spec['beta']),#3
+    'OFFSET': -np.log(1-MAIN_DECAY),#3
     'SPIKE_FN': spec['spkfn'],
     '1-beta': spec['1-beta'],
     'ADAPDECAY': ADAP_DECAY, #0.9985,
