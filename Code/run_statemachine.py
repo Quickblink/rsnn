@@ -228,7 +228,7 @@ while i < ITERATIONS:
         #print(loss.item(), sumloss/20, sumacc/20, time.time()-batchstart, batch_var) #torch.argmax(outputs[-1], 1).float().var()
         sumloss = 0
         sumacc = 0
-    if i%100 == 0:
+    if i%100 == 1:
         validate()
         config['stats'] = stats
         config['progress'] = i
