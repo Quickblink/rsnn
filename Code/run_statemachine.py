@@ -83,7 +83,7 @@ built_config = {
     'SPIKE_FN': spec['spkfn'],
     '1-beta': spec['1-beta'],
     'ADAPDECAY': ADAP_DECAY, #0.9985,
-    'ADAPSCALE': 180
+    'ADAPSCALE': 3*CHAR_DUR#180
 }
 
 #built_config['ADAPDECAY'] = 0.99

@@ -513,7 +513,7 @@ class AdaptiveNeuron(NoResetNeuron):
         new_h['rel_thresh'] = self.decay * h['rel_thresh'] + (1-self.decay) * h['spikes']
         threshold = 1 + new_h['rel_thresh'] * self.scale
         new_h['spikes'] = self.spike_fn((h['mem'] - threshold)/threshold)
-        new_h['mem'] = self.beta * h['mem'] + self.factor * x - new_h['spikes'] * threshold
+        new_h['mem'] = self.beta * h['mem'] + self.factor * x - (new_h['spikes'] * threshold)#.detach()
         return new_h['spikes'], new_h
 
 
