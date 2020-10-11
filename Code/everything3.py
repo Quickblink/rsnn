@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import copy
 import torch.nn.functional as F
+from torch.distributions.uniform import Uniform
 
 #devide by threshold, 1-beta factor
 
@@ -94,7 +95,9 @@ class ParallelNetwork2(nn.Module):
                     # = klay if type(klay) is tuple else (klay, 1)
                     n += self.in_size if ilay == 'input' else self.architecture[ilay][1].out_size
                     total_contribution += contrib
-                self.layers[layer+'_synapse'] = params[2](n, params[1].in_size, bias=bias)
+                self.layers[layer+'_synapse'] = params[2](n, params[1].in_size, bias=True)
+                with torch.no_grad():
+                    self.layers[layer+'_synapse'].bias.data = Uniform(0, (1 - params[1].beta + 0.03)/params[1].factor).sample(self.layers[layer+'_synapse'].bias.shape)
                 k0 = 0
                 k1 = 0
                 target_var = self.layers[layer].target_var
@@ -418,8 +421,8 @@ class NoResetNeuron(BaseNeuron):
         else:
             self.spike_fn = SuperSpike.apply
         self.initial_mem = nn.Parameter(torch.zeros([size]), requires_grad=True)
-        self.target_var = 0.25
-        self.est_rate = 0.02
+        self.target_var = 1
+        self.est_rate = 0.06
 
 
     def get_initial_state(self, batch_size):
