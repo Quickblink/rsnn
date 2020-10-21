@@ -92,3 +92,71 @@ def run(model, lookup, rythm, batch_size, seql, char_dur, perm_num, device, logg
     acc = (out_class[1:] == targets[:-1]).float().mean().item()
 
     return acc, loss, ((input, dir_out[2]) if logging else None)
+
+
+class SuccessiveLookups:
+    def __init__(self, iterations, batch_size, n_sequence, round_length, device):
+        self.batch_size = batch_size
+        self.n_sequence = n_sequence
+        #self.val_sequence = val_sequence
+        self.round_length = round_length
+        self.device = device
+        self.max_iter = iterations
+        self.lookup = torch.tensor([[6, 1, 4, 5, 7, 2, 0, 3],
+                               [7, 0, 4, 2, 3, 1, 5, 6],
+                               [0, 5, 6, 2, 4, 3, 7, 1],
+                               [2, 7, 6, 4, 3, 1, 5, 0],
+                               [0, 6, 4, 5, 2, 1, 7, 3],
+                               [5, 1, 0, 6, 4, 7, 3, 2],
+                               [4, 6, 1, 2, 5, 7, 0, 3],
+                               [2, 7, 4, 3, 5, 6, 0, 1]], dtype=torch.long, device=device)
+        self.lookup_size = 8
+        with torch.no_grad():
+            self.rythm = torch.diag(torch.ones([self.round_length], device=device))
+            self.rythm = self.rythm.expand(self.n_sequence, self.round_length, self.round_length).reshape(
+                self.n_sequence * self.round_length, 1, self.round_length).expand(
+                self.n_sequence * self.round_length, batch_size, self.round_length)
+
+        #self.val_rythm = None
+
+    def __iter__(self):
+        self.cur_iter = 0
+        return self
+
+    def __next__(self):
+        self.cur_iter += 1
+        if self.cur_iter > self.max_iter:
+            raise StopIteration
+        return self.make_inputs()
+
+    def loss_and_acc(self, model_output):
+        output = model_output.view(self.n_sequence, self.round_length, self.batch_size, self.lookup_size).mean(dim=1)
+        out_class = output.argmax(dim=-1, keepdim=True)
+        targets = self.lookup[out_class, self.raw_inp]
+
+        loss = nn.CrossEntropyLoss()(output[1:].view(-1, self.lookup_size), targets[:-1].view(-1))
+
+        acc = (out_class[1:] == targets[:-1]).float().mean().item()
+
+        return loss, acc
+
+
+    def get_infos(self):
+        n_in = self.lookup_size + self.round_length
+        return n_in, self.lookup_size, 1.5/n_in
+
+
+    def make_inputs(self):
+        data = torch.zeros((self.n_sequence, self.batch_size, self.lookup_size), device=self.device)
+        ind = torch.randint(self.lookup_size, (self.n_sequence, self.batch_size, 1), device=self.device)
+        data.scatter_(-1, ind, torch.ones([1], device=self.device).expand_as(data))
+        self.raw_inp = ind
+        inp_dur = self.round_length // 2
+        pause_dur = self.round_length - inp_dur
+        data = data.view(self.n_sequence, 1, self.batch_size, self.lookup_size).expand(
+            self.n_sequence, inp_dur, self.batch_size, self.lookup_size)
+        empty_second_half = torch.zeros((self.n_sequence, pause_dur, self.batch_size, self.lookup_size), device=self.device)
+        data = torch.cat((data, empty_second_half), dim=1).view(
+            self.n_sequence * self.round_length, self.batch_size, self.lookup_size)
+        data = torch.cat((data, self.rythm), dim=-1)
+        return data

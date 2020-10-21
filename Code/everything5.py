@@ -338,9 +338,9 @@ class SequenceWrapper(nn.Module):
         return self.model.get_initial_state(batch_size)
 
 class OuterWrapper(nn.Module):
-    def __init__(self, model, device, two_dim=False):
+    def __init__(self, model, two_dim=False):
         super().__init__()
-        self.model = model.to(device)
+        self.model = model
         self.two_dim = two_dim
 
 
@@ -588,3 +588,78 @@ class OutputNeuron(NoResetNeuron):
     def forward(self, x, h):
         _, new_h = super().forward(x, h)
         return new_h['mem'], new_h
+
+
+
+def build_standard_model(spec, n_input, input_rate, n_out):
+
+    neuron_lookup = {
+        'LIF': LIFNeuron,
+        'Disc': SeqOnlySpike,
+        'Adaptive': AdaptiveNeuron,
+        'Cooldown': CooldownNeuron,
+        'NoReset': NoResetNeuron,
+        'FlipFlop': NewFlipFlop,  # FlipFlopNeuron,
+    }
+
+    control_neuron = neuron_lookup[spec['control_config']['neuron_type']](spec['control_config']['n_neurons'], spec['control_config'])
+    mem_neuron = neuron_lookup[spec['mem_config']['neuron_type']](spec['mem_config']['n_neurons'], spec['mem_config'])
+    out_neuron_size = spec['control_config']['n_neurons'] + spec['mem_config']['n_neurons']
+    out_neuron = BaseNeuron(out_neuron_size, None)
+
+    loop_2L = {
+        'input': (n_input, input_rate),
+        'control': [['input', 'mem'], control_neuron, nn.Linear],
+        'mem': [['control'], mem_neuron, nn.Linear],
+        'output': [['control', 'mem'], out_neuron, None],
+    }
+
+    loop_1L = {
+        'input': (n_input, input_rate),
+        'control': [['input', 'control', 'mem'], control_neuron, nn.Linear],
+        'mem': [['input', 'control', 'mem'], mem_neuron, nn.Linear],
+        'output': [['control', 'mem'], out_neuron, None],
+    }
+
+    loop = loop_1L if spec['architecture'] == '1L' else loop_2L
+
+    outer = {
+        'input': n_input,
+        'loop': [['input'], SequenceWrapper(ParallelNetwork2(loop)), None],
+        'output': [['loop'], BaseNeuron(n_out, None), nn.Linear]
+    }
+
+    return OuterWrapper(DynNetwork(outer))
+
+
+def build_standard_loop(spec, n_input, input_rate):
+
+    neuron_lookup = {
+        'LIF': LIFNeuron,
+        'Disc': SeqOnlySpike,
+        'Adaptive': AdaptiveNeuron,
+        'Cooldown': CooldownNeuron,
+        'NoReset': NoResetNeuron,
+        'FlipFlop': NewFlipFlop,  # FlipFlopNeuron,
+    }
+
+    control_neuron = neuron_lookup[spec['control_config']['neuron_type']](spec['control_config']['n_neurons'], spec['control_config'])
+    mem_neuron = neuron_lookup[spec['mem_config']['neuron_type']](spec['mem_config']['n_neurons'], spec['mem_config'])
+    out_neuron_size = spec['control_config']['n_neurons'] + spec['mem_config']['n_neurons']
+    out_neuron = BaseNeuron(out_neuron_size, None)
+
+    loop_2L = {
+        'input': (n_input, input_rate),
+        'control': [['input', 'mem'], control_neuron, nn.Linear],
+        'mem': [['control'], mem_neuron, nn.Linear],
+        'output': [['control', 'mem'], out_neuron, None],
+    }
+
+    loop_1L = {
+        'input': (n_input, input_rate),
+        'control': [['input', 'control', 'mem'], control_neuron, nn.Linear],
+        'mem': [['input', 'control', 'mem'], mem_neuron, nn.Linear],
+        'output': [['control', 'mem'], out_neuron, None],
+    }
+
+    return loop_1L if spec['architecture'] == '1L' else loop_2L
