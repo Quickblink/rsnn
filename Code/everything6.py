@@ -507,10 +507,10 @@ class AdaptiveNeuron(NoResetNeuron):
 
     def forward(self, x, h):
         new_h = {}
-        new_h['rel_thresh'] = self.beta_thr * h['rel_thresh'] + self.gamma * h['spikes']
-        threshold = 1 + new_h['rel_thresh']
+        threshold = 1 + h['rel_thresh']
         spikes = self.spike_fn((h['mem'] - threshold)/threshold)
-        new_h['mem'] = self.beta * h['mem'] + self.factor * x - (new_h['spikes'] * threshold)#.detach()
+        new_h['mem'] = self.beta * h['mem'] + self.factor * x - (spikes * threshold)#.detach()
+        new_h['rel_thresh'] = self.beta_thr * h['rel_thresh'] + self.gamma * spikes
         return spikes, new_h
 
 
