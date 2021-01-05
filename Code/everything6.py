@@ -463,7 +463,6 @@ class NoResetNeuron(BaseNeuron):
 class CooldownNeuron(NoResetNeuron):
     def __init__(self, size, params):
         super().__init__(size, params)
-        self.offset = params['OFFSET']
         self.register_buffer('sgn', torch.ones([size], requires_grad=False))
         self.sgn[(size//2):] *= -1
 
