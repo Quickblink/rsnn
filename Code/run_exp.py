@@ -14,7 +14,6 @@ import json
 
 
 run_id = sys.argv[1]
-#print(sys.argv)
 with open('configs/'+run_id+'.json', 'r') as config_file:
     config = json.load(config_file)
     spec = config['params']

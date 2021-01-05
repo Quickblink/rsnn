@@ -17,7 +17,7 @@ class SequentialMNIST:
         mnist = MNIST(mnist_location, transform=transforms.ToTensor(), download=True, train=not validate)  # distortion_transform([0,15], 3)
         if validate:
             dl = DataLoader(mnist, batch_size=batch_size, drop_last=False, num_workers=0)
-            self.loop_loader = iter(dl)
+            self.loop_loader = loop_dataloader(dl)
             self.max_iter = len(dl)
         else:
             self.loop_loader = loop_dataloader(DataLoader(mnist, batch_size=batch_size, drop_last=True, num_workers=0, shuffle=True))

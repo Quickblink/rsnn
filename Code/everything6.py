@@ -3,6 +3,7 @@ import torch.nn as nn
 import copy
 import torch.nn.functional as F
 from torch.distributions.uniform import Uniform
+import numpy as np
 
 
 class BellecSpike(torch.autograd.Function):
@@ -420,23 +421,12 @@ class MeanModule(BaseNeuron):
         return x[self.last_index:].mean(dim=0), ()
 
 
-class PositiveLinear(nn.Linear):
-    def __init__(self, in_features, out_features, bias=True):
-        super().__init__(in_features, out_features, False)
-        self.elu = torch.nn.ELU()
-        self.n_in = in_features
-        self.weight.data = Uniform(0, 2).sample(self.weight.shape)
-
-    def forward(self, x):
-        #return F.linear(x, (self.elu(self.weight-1) + 1) / self.n_in /0.02, None)
-        return F.linear(x, (torch.relu(self.weight)) / self.n_in /0.1, None)
-
 
 
 class NoResetNeuron(BaseNeuron):
     def __init__(self, size, params):
         super().__init__(size, None)
-        self.beta = params['BETA']
+        self.beta = np.exp(-1/params['TAU'])
         if params['1-beta'] == 'improved':
             self.factor = (1 - self.beta ** 2) ** (0.5)
         elif params['1-beta']:
@@ -455,8 +445,7 @@ class NoResetNeuron(BaseNeuron):
 
     def get_initial_state(self, batch_size):
         return {
-            'mem': self.initial_mem.expand([batch_size, self.in_size]),
-            'spikes': self.get_initial_output(batch_size)
+            'mem': self.initial_mem.expand([batch_size, self.in_size])
         }
 
     def get_initial_output(self, batch_size):
@@ -465,146 +454,16 @@ class NoResetNeuron(BaseNeuron):
     def forward(self, x, h):
         new_h = {}
         new_h['mem'] = self.beta * h['mem'] + self.factor * x
-        new_h['spikes'] = self.spike_fn(h['mem'] - 1)
-        return new_h['spikes'], new_h
-
-
-class NoResetNeuron2(NoResetNeuron):
-    def __init__(self, size, params):
-        super().__init__(size, params)
-        self.out_size = 2 * size
-        self.do_bias = False
-        self.beta = 1
-        self.factor = 0.04
-
-    def get_initial_state(self, batch_size):
-        return {
-            'mem': self.initial_mem.expand([batch_size, self.in_size]),
-        }
-
-    def get_initial_output(self, batch_size):
-        raw = self.spike_fn(self.initial_mem.expand([batch_size, self.in_size]))
-        return torch.cat((raw, 1-raw), dim=-1)
-
-    def forward(self, x, h):
-        new_h = {}
-        new_h['mem'] = self.beta * h['mem'] + self.factor * x
-        spikes = self.spike_fn(h['mem'])
-        return torch.cat((spikes, 1-spikes), dim=-1), new_h
-
-
-class NoResetNeuron3(NoResetNeuron):
-    def __init__(self, size, params):
-        super().__init__(size, params)
-        self.out_size = 2 * size
-        self.do_bias = False
-        self.target_var = None
-
-
-    def get_initial_state(self, batch_size):
-        return {
-            'mem': self.initial_mem.expand([batch_size, self.in_size]),
-        }
-
-    def get_initial_output(self, batch_size):
-        raw = self.spike_fn(self.initial_mem.expand([batch_size, self.in_size]) - 1)
-        return torch.cat((raw, 1-raw), dim=-1)
-
-    def forward(self, x, h):
-        new_h = {}
-        new_h['mem'] = self.beta * h['mem'] + (1-self.beta) * x
         spikes = self.spike_fn(h['mem'] - 1)
-        return torch.cat((spikes, 1-spikes), dim=-1), new_h
-
-class NewFlipFlop(BaseNeuron):
-    def __init__(self, size, params):
-        super().__init__(size, params)
-        assert size % 2 == 0
-        self.lif_on = LIFNeuron(size // 2, params) #TODO: params?
-        self.lif_off = LIFNeuron(size // 2, params) #TODO: params?
-        self.register_buffer('decay', torch.tensor([params['DECAY']]))
-        self.target_var = 1
-        self.est_rate = 0.5
-        self.beta = self.lif_on.beta
-        self.factor = self.lif_on.factor
-
-    def get_initial_state(self, batch_size):
-        return {
-            'flipflop': self.device_zero.expand((batch_size, self.in_size//2)),
-            'lif_on': self.lif_on.get_initial_state(batch_size),
-            'lif_off': self.lif_off.get_initial_state(batch_size),
-            'counter': torch.zeros_like(self.device_zero)
-        }
-
-    def get_initial_output(self, batch_size):
-        out = torch.ones((batch_size, self.in_size), device=self.device_zero.device)
-        out[:, :self.in_size//2] *= 0
-        return out
-
-    def forward(self, x, h):
-        new_h = {}
-        x1, new_h['lif_on'] = self.lif_on(x[:, :self.in_size//2], h['lif_on'])
-        x2, new_h['lif_off'] = self.lif_off(x[:, self.in_size//2:], h['lif_off'])
-        new_h['flipflop'], new_h['counter'] = FlipFlopNFn.apply(x1, x2, h['flipflop'], self.decay, h['counter'])
-        out = torch.cat((new_h['flipflop'], 1-new_h['flipflop']), dim=-1)
-        return out, new_h
+        return spikes, new_h
 
 
-class FlipFlopNeuron(BaseNeuron):
-    def __init__(self, size, params):
-        super().__init__(size, params)
-        self.spike_fn = FlipFlopSpike.apply
-        self.register_buffer('initial_out', torch.ones([size], requires_grad=False))
-        self.initial_out[(size//2):] *= 0
-        #TODO: do mirrored outputs?
-
-    def get_initial_state(self, batch_size):
-        state = {
-            'mem': self.initial_mem.expand([batch_size, self.in_size]),
-            'spikes': self.initial_out.expand([batch_size, self.in_size])
-        }
-        return state
-
-    def get_initial_output(self, batch_size):
-        return self.initial_out.expand([batch_size, self.in_size])
-
-    def forward(self, x, h):
-        new_h = {}
-        new_h['mem'] = self.beta * h['mem'] + self.factor * x
-        new_h['spikes'] = self.spike_fn(h['mem'], h['spikes'].detach())
-        return new_h['spikes'], new_h
-
-
-class CooldownNeuron2(NoResetNeuron):
-    def __init__(self, size, params):
-        super().__init__(size, params)
-        self.out_size = 2 * size
-        self.offset = params['OFFSET']
-        self.elu = torch.nn.ELU()
-        self.target_var = 1
-
-
-    def get_initial_state(self, batch_size):
-        return {
-            'mem': self.initial_mem.expand([batch_size, self.in_size]),
-        }
-
-    def get_initial_output(self, batch_size):
-        raw = self.spike_fn(self.initial_mem.expand([batch_size, self.in_size])-1)
-        return torch.cat((raw, 1-raw), dim=-1)
-
-    def forward(self, x, h):
-        new_h = {}
-        new_h['mem'] = self.beta * h['mem'] + (self.elu(x)+1)*(1-self.beta)#torch.relu(x)*self.factor #self.elu(x-self.offset) + 1
-        spikes = self.spike_fn(h['mem'] - 1)
-        return torch.cat((spikes, 1-spikes), dim=-1), new_h
 
 
 class CooldownNeuron(NoResetNeuron):
     def __init__(self, size, params):
         super().__init__(size, params)
         self.offset = params['OFFSET']
-        self.elu = torch.nn.ELU()
         self.register_buffer('sgn', torch.ones([size], requires_grad=False))
         self.sgn[(size//2):] *= -1
 
@@ -613,9 +472,9 @@ class CooldownNeuron(NoResetNeuron):
 
     def forward(self, x, h):
         new_h = {}
-        new_h['mem'] = self.beta * h['mem'] + self.elu(x-self.offset) + 1
-        new_h['spikes'] = self.spike_fn(self.sgn * (h['mem'] - 1))
-        return new_h['spikes'], new_h
+        new_h['mem'] = self.beta * h['mem'] + (1-self.beta) * torch.exp(x)
+        spikes = self.spike_fn(self.sgn * (h['mem'] - 1))
+        return spikes, new_h
 
 
 
@@ -636,8 +495,8 @@ class LIFNeuron(NoResetNeuron):
 class AdaptiveNeuron(NoResetNeuron):
     def __init__(self, size, params):
         super().__init__(size, params)
-        self.decay = params['ADAPDECAY']
-        self.scale = params['ADAPSCALE']
+        self.beta_thr = np.exp(-1/params['TAU_THR'])
+        self.gamma = params['GAMMA']
         self.est_rate = 0.06
 
 
@@ -648,11 +507,11 @@ class AdaptiveNeuron(NoResetNeuron):
 
     def forward(self, x, h):
         new_h = {}
-        new_h['rel_thresh'] = self.decay * h['rel_thresh'] + (1-self.decay) * h['spikes']
-        threshold = 1 + new_h['rel_thresh'] * self.scale
-        new_h['spikes'] = self.spike_fn((h['mem'] - threshold)/threshold)
+        new_h['rel_thresh'] = self.beta_thr * h['rel_thresh'] + self.gamma * h['spikes']
+        threshold = 1 + new_h['rel_thresh']
+        spikes = self.spike_fn((h['mem'] - threshold)/threshold)
         new_h['mem'] = self.beta * h['mem'] + self.factor * x - (new_h['spikes'] * threshold)#.detach()
-        return new_h['spikes'], new_h
+        return spikes, new_h
 
 
 
@@ -680,46 +539,6 @@ class OutputNeuron(NoResetNeuron):
 
 
 
-def build_standard_model(spec, n_input, input_rate, n_out):
-
-    neuron_lookup = {
-        'LIF': LIFNeuron,
-        'Disc': SeqOnlySpike,
-        'Adaptive': AdaptiveNeuron,
-        'Cooldown': CooldownNeuron,
-        'NoReset': NoResetNeuron,
-        'FlipFlop': NewFlipFlop,  # FlipFlopNeuron,
-    }
-
-    control_neuron = neuron_lookup[spec['control_config']['neuron_type']](spec['control_config']['n_neurons'], spec['control_config'])
-    mem_neuron = neuron_lookup[spec['mem_config']['neuron_type']](spec['mem_config']['n_neurons'], spec['mem_config'])
-    out_neuron_size = spec['control_config']['n_neurons'] + spec['mem_config']['n_neurons']
-    out_neuron = BaseNeuron(out_neuron_size, None)
-
-    loop_2L = {
-        'input': (n_input, input_rate),
-        'control': [['input', 'mem'], control_neuron, nn.Linear],
-        'mem': [['control'], mem_neuron, nn.Linear],
-        'output': [['control', 'mem'], out_neuron, None],
-    }
-
-    loop_1L = {
-        'input': (n_input, input_rate),
-        'control': [['input', 'control', 'mem'], control_neuron, nn.Linear],
-        'mem': [['input', 'control', 'mem'], mem_neuron, nn.Linear],
-        'output': [['control', 'mem'], out_neuron, None],
-    }
-
-    loop = loop_1L if spec['architecture'] == '1L' else loop_2L
-
-    outer = {
-        'input': n_input,
-        'loop': [['input'], SequenceWrapper(ParallelNetwork2(loop)), None],
-        'output': [['loop'], BaseNeuron(n_out, None), nn.Linear]
-    }
-
-    return OuterWrapper(DynNetwork(outer))
-
 
 def build_standard_loop(spec, n_input, input_rate):
 
@@ -729,8 +548,6 @@ def build_standard_loop(spec, n_input, input_rate):
         'Adaptive': AdaptiveNeuron,
         'Cooldown': CooldownNeuron,
         'NoReset': NoResetNeuron,
-        'FlipFlop': NewFlipFlop,  # FlipFlopNeuron,
-        'NoReset2': NoResetNeuron2,
     }
 
     control_neuron = neuron_lookup[spec['control_config']['neuron_type']](spec['control_config']['n_neurons'], spec['control_config'])
