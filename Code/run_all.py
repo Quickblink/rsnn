@@ -10,10 +10,10 @@ from Code.envs.statemachine import SuccessiveLookups
 import json
 
 #TODO: this is same decay!!!!
-MAIN_DECAY = np.exp(-1/(700)*0.5)
-ADAP_DECAY = np.exp(-1/(700*2))
+#MAIN_DECAY = np.exp(-1/(700)*0.5)
+#ADAP_DECAY = np.exp(-1/(700*2))
 
-MAIN_DECAY = np.exp(-1/700)
+#MAIN_DECAY = np.exp(-1/700)
 
 ex_spec = {
     'control_config': {
@@ -32,7 +32,7 @@ ex_spec = {
         'ADAPSCALE': 30,
         'ADAPDECAY': None, #TODO: set this
         'OFFSET': None,
-        'DECAY': MAIN_DECAY
+        'DECAY': None#MAIN_DECAY
     },
     'exp_config': {
         'n_sequence': 30,

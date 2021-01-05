@@ -556,14 +556,14 @@ def build_standard_loop(spec, n_input, input_rate):
     out_neuron = BaseNeuron(out_neuron_size, None)
 
     loop_2L = {
-        'input': (n_input, input_rate),
+        'input': n_input,
         'control': [['input', 'mem'], control_neuron, nn.Linear],
         'mem': [['control'], mem_neuron, nn.Linear],
         'output': [['control', 'mem'], out_neuron, None],
     }
 
     loop_1L = {
-        'input': (n_input, input_rate),
+        'input': n_input,
         'control': [['input', 'control', 'mem'], control_neuron, nn.Linear],
         'mem': [['input', 'control', 'mem'], mem_neuron, nn.Linear],
         'output': [['control', 'mem'], out_neuron, None],
