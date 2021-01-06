@@ -1,0 +1,29 @@
+{
+  "cmd": "docker build -t imrsnn . && nvidia-docker run -v /home/ubuntu/eric/rsnn:/home/developer --name anew_adaptive2 --net host --ipc host --rm -t imrsnn python3 Code/run_all.py anew_adaptive2",
+  "progress": 0,
+  "mem_req": 4000,
+  "params": {
+    "control_config": {
+      "neuron_type": "LIF",
+      "n_neurons": 120,
+      "TAU": 20,
+      "1-beta": false,
+      "SPIKE_FN": "bellec"
+    },
+    "mem_config": {
+      "neuron_type": "Adaptive",
+      "n_neurons": 100,
+      "TAU": 20,
+      "1-beta": false,
+      "SPIKE_FN": "bellec",
+      "GAMMA": 0.27,
+      "TAU_THR": 10000
+    },
+    "experiment": "SequentialMNIST",
+    "lr": 0.001,
+    "lr_decay": 0.9,
+    "iterations": 36000,
+    "batch_size": 256,
+    "architecture": "1L"
+  }
+}
