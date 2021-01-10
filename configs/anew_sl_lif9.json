@@ -1,0 +1,34 @@
+{
+  "cmd": "docker build -t imrsnn . && nvidia-docker run -v /home/ubuntu/eric/rsnn:/home/developer --name anew_sl_lif9 --net host --ipc host --rm -t imrsnn python3 Code/run_all.py anew_sl_lif9",
+  "progress": 0,
+  "mem_req": 4000,
+  "params": {
+    "control_config": {
+      "neuron_type": "LIF",
+      "n_neurons": 100,
+      "TAU": 10,
+      "1-beta": false,
+      "SPIKE_FN": "bellec"
+    },
+    "mem_config": {
+      "neuron_type": "LIF",
+      "n_neurons": 10,
+      "TAU": 20,
+      "1-beta": false,
+      "SPIKE_FN": "bellec",
+      "GAMMA": 0.27,
+      "TAU_THR": 10000
+    },
+    "exp_config": {
+      "n_sequence": 30,
+      "val_sequence": 100,
+      "round_length": 20
+    },
+    "experiment": "SuccessiveLookups",
+    "lr": 0.001,
+    "lr_decay": 1,
+    "iterations": 5000,
+    "batch_size": 128,
+    "architecture": "1L"
+  }
+}
