@@ -1,0 +1,374 @@
+Sending build context to Docker daemon  895.2MB
+Step 1/14 : FROM nvcr.io/nvidia/pytorch:20.01-py3
+ ---> 5c0c8c90f238
+Step 2/14 : RUN apt-get update
+ ---> Using cache
+ ---> 44a2810706ea
+Step 3/14 : RUN apt-get install -y mesa-utils
+ ---> Using cache
+ ---> cd1fb3ada3ea
+Step 4/14 : RUN apt-get install -y sudo
+ ---> Using cache
+ ---> 2d3182b560ab
+Step 5/14 : RUN apt-get install -y python-opengl
+ ---> Using cache
+ ---> 5d66e1f422ee
+Step 6/14 : ENV NVIDIA_VISIBLE_DEVICES     ${NVIDIA_VISIBLE_DEVICES:-all}
+ ---> Using cache
+ ---> 8b78831eab16
+Step 7/14 : ENV NVIDIA_DRIVER_CAPABILITIES     ${NVIDIA_DRIVER_CAPABILITIES:+$NVIDIA_DRIVER_CAPABILITIES,}graphics
+ ---> Using cache
+ ---> 6aba20470dd6
+Step 8/14 : RUN mkdir -p /home/developer
+ ---> Using cache
+ ---> 027c3e15149e
+Step 9/14 : ENV HOME /home/developer
+ ---> Using cache
+ ---> 71fca608204b
+Step 10/14 : WORKDIR /home/developer
+ ---> Using cache
+ ---> 012aafa499d9
+Step 11/14 : COPY packages.txt /home/developer
+ ---> Using cache
+ ---> eb08b1b14b8d
+Step 12/14 : RUN pip install -r packages.txt
+ ---> Using cache
+ ---> e97aefff8187
+Step 13/14 : RUN export uid=1000 gid=1001 &&     mkdir -p /etc/sudoers.d &&     echo "developer:x:${uid}:${gid}:Developer,,,:/home/developer:/bin/bash" >> /etc/passwd &&     echo "developer:x:${gid}:" >> /etc/group &&     echo "developer ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/developer &&     chmod 0440 /etc/sudoers.d/developer &&     chown ${uid}:${gid} -R /home/developer
+ ---> Using cache
+ ---> 17afe90d53f6
+Step 14/14 : USER developer
+ ---> Using cache
+ ---> 85c7adf1dabc
+Successfully built 85c7adf1dabc
+Successfully tagged imrsnn:latest
+
+=============
+== PyTorch ==
+=============
+
+NVIDIA Release 20.01 (build 9332039)
+PyTorch Version 1.4.0a0+a5b4d78
+
+Container image Copyright (c) 2019, NVIDIA CORPORATION.  All rights reserved.
+
+Copyright (c) 2014-2019 Facebook Inc.
+Copyright (c) 2011-2014 Idiap Research Institute (Ronan Collobert)
+Copyright (c) 2012-2014 Deepmind Technologies    (Koray Kavukcuoglu)
+Copyright (c) 2011-2012 NEC Laboratories America (Koray Kavukcuoglu)
+Copyright (c) 2011-2013 NYU                      (Clement Farabet)
+Copyright (c) 2006-2010 NEC Laboratories America (Ronan Collobert, Leon Bottou, Iain Melvin, Jason Weston)
+Copyright (c) 2006      Idiap Research Institute (Samy Bengio)
+Copyright (c) 2001-2004 Idiap Research Institute (Ronan Collobert, Samy Bengio, Johnny Mariethoz)
+Copyright (c) 2015      Google Inc.
+Copyright (c) 2015      Yangqing Jia
+Copyright (c) 2013-2016 The Caffe contributors
+All rights reserved.
+
+Various files include modifications (c) NVIDIA CORPORATION.  All rights reserved.
+NVIDIA modifications are covered by the license terms that apply to the underlying project or file.
+
+NOTE: MOFED driver for multi-node communication was not detected.
+      Multi-node communication performance may be reduced.
+
+Val Acc: 12.50% | Val Time: 17.1s | Time per it: 11.7s
+It:   20 | Loss: 2.079 | Acc: 12.84%
+It:   40 | Loss: 2.076 | Acc: 16.86%
+It:   60 | Loss: 2.071 | Acc: 14.00%
+It:   80 | Loss: 2.003 | Acc: 25.52%
+It:  100 | Loss: 1.933 | Acc: 28.35%
+Val Acc: 23.21% | Val Time: 18.9s | Time per it: 6.6s
+It:  120 | Loss: 1.914 | Acc: 27.48%
+It:  140 | Loss: 1.868 | Acc: 31.04%
+It:  160 | Loss: 1.857 | Acc: 28.55%
+It:  180 | Loss: 1.789 | Acc: 33.09%
+It:  200 | Loss: 1.741 | Acc: 31.87%
+Val Acc: 33.94% | Val Time: 19.6s | Time per it: 6.7s
+It:  220 | Loss: 1.720 | Acc: 31.24%
+It:  240 | Loss: 1.703 | Acc: 31.99%
+It:  260 | Loss: 1.746 | Acc: 34.08%
+It:  280 | Loss: 1.722 | Acc: 35.34%
+It:  300 | Loss: 1.648 | Acc: 38.84%
+Val Acc: 37.61% | Val Time: 19.7s | Time per it: 6.9s
+It:  320 | Loss: 1.620 | Acc: 41.41%
+It:  340 | Loss: 1.620 | Acc: 39.63%
+It:  360 | Loss: 1.612 | Acc: 39.83%
+It:  380 | Loss: 1.640 | Acc: 36.30%
+It:  400 | Loss: 1.602 | Acc: 37.85%
+Val Acc: 40.19% | Val Time: 19.2s | Time per it: 6.8s
+It:  420 | Loss: 1.588 | Acc: 38.13%
+It:  440 | Loss: 1.608 | Acc: 36.98%
+It:  460 | Loss: 1.532 | Acc: 41.74%
+It:  480 | Loss: 1.463 | Acc: 44.65%
+It:  500 | Loss: 1.420 | Acc: 48.00%
+Val Acc: 47.66% | Val Time: 19.4s | Time per it: 6.8s
+It:  520 | Loss: 1.370 | Acc: 49.56%
+It:  540 | Loss: 1.262 | Acc: 53.10%
+It:  560 | Loss: 1.207 | Acc: 55.27%
+It:  580 | Loss: 1.186 | Acc: 55.76%
+It:  600 | Loss: 1.144 | Acc: 57.41%
+Val Acc: 58.02% | Val Time: 17.9s | Time per it: 6.3s
+It:  620 | Loss: 1.091 | Acc: 59.35%
+It:  640 | Loss: 1.066 | Acc: 60.80%
+It:  660 | Loss: 1.044 | Acc: 62.23%
+It:  680 | Loss: 1.017 | Acc: 63.86%
+It:  700 | Loss: 0.987 | Acc: 65.36%
+Val Acc: 67.95% | Val Time: 18.3s | Time per it: 6.3s
+It:  720 | Loss: 0.946 | Acc: 66.99%
+It:  740 | Loss: 0.868 | Acc: 70.43%
+It:  760 | Loss: 0.788 | Acc: 74.11%
+It:  780 | Loss: 0.691 | Acc: 77.98%
+It:  800 | Loss: 0.605 | Acc: 81.44%
+Val Acc: 82.61% | Val Time: 17.7s | Time per it: 6.4s
+It:  820 | Loss: 0.520 | Acc: 84.40%
+It:  840 | Loss: 0.446 | Acc: 87.32%
+It:  860 | Loss: 0.371 | Acc: 89.84%
+It:  880 | Loss: 0.329 | Acc: 91.26%
+It:  900 | Loss: 0.275 | Acc: 93.03%
+Val Acc: 93.66% | Val Time: 16.4s | Time per it: 6.2s
+It:  920 | Loss: 0.250 | Acc: 93.71%
+It:  940 | Loss: 0.223 | Acc: 94.46%
+It:  960 | Loss: 0.195 | Acc: 95.32%
+It:  980 | Loss: 0.214 | Acc: 94.65%
+It: 1000 | Loss: 0.176 | Acc: 95.82%
+Val Acc: 96.42% | Val Time: 16.1s | Time per it: 5.8s
+It: 1020 | Loss: 0.137 | Acc: 97.01%
+It: 1040 | Loss: 0.112 | Acc: 97.60%
+It: 1060 | Loss: 0.108 | Acc: 97.68%
+It: 1080 | Loss: 0.117 | Acc: 97.29%
+It: 1100 | Loss: 0.088 | Acc: 98.17%
+Val Acc: 98.36% | Val Time: 16.6s | Time per it: 5.8s
+It: 1120 | Loss: 0.094 | Acc: 97.90%
+It: 1140 | Loss: 0.083 | Acc: 98.22%
+It: 1160 | Loss: 0.104 | Acc: 97.62%
+It: 1180 | Loss: 0.071 | Acc: 98.50%
+It: 1200 | Loss: 0.065 | Acc: 98.68%
+Val Acc: 99.12% | Val Time: 16.1s | Time per it: 5.8s
+It: 1220 | Loss: 0.067 | Acc: 98.50%
+It: 1240 | Loss: 0.062 | Acc: 98.69%
+It: 1260 | Loss: 0.066 | Acc: 98.56%
+It: 1280 | Loss: 0.049 | Acc: 99.05%
+It: 1300 | Loss: 0.042 | Acc: 99.22%
+Val Acc: 99.31% | Val Time: 14.7s | Time per it: 5.6s
+It: 1320 | Loss: 0.036 | Acc: 99.37%
+It: 1340 | Loss: 0.053 | Acc: 98.86%
+It: 1360 | Loss: 0.035 | Acc: 99.37%
+It: 1380 | Loss: 0.038 | Acc: 99.29%
+It: 1400 | Loss: 0.035 | Acc: 99.38%
+Val Acc: 99.62% | Val Time: 14.6s | Time per it: 5.3s
+It: 1420 | Loss: 0.038 | Acc: 99.25%
+It: 1440 | Loss: 0.032 | Acc: 99.39%
+It: 1460 | Loss: 0.030 | Acc: 99.48%
+It: 1480 | Loss: 0.023 | Acc: 99.62%
+It: 1500 | Loss: 0.025 | Acc: 99.54%
+Val Acc: 99.56% | Val Time: 14.7s | Time per it: 5.3s
+It: 1520 | Loss: 0.025 | Acc: 99.52%
+It: 1540 | Loss: 0.025 | Acc: 99.56%
+It: 1560 | Loss: 0.029 | Acc: 99.41%
+It: 1580 | Loss: 0.025 | Acc: 99.57%
+It: 1600 | Loss: 0.027 | Acc: 99.51%
+Val Acc: 99.61% | Val Time: 14.6s | Time per it: 5.3s
+It: 1620 | Loss: 0.022 | Acc: 99.63%
+It: 1640 | Loss: 0.019 | Acc: 99.68%
+It: 1660 | Loss: 0.032 | Acc: 99.38%
+It: 1680 | Loss: 0.031 | Acc: 99.40%
+It: 1700 | Loss: 0.018 | Acc: 99.70%
+Val Acc: 99.72% | Val Time: 12.9s | Time per it: 4.9s
+It: 1720 | Loss: 0.017 | Acc: 99.72%
+It: 1740 | Loss: 0.015 | Acc: 99.76%
+It: 1760 | Loss: 0.016 | Acc: 99.71%
+It: 1780 | Loss: 0.013 | Acc: 99.80%
+It: 1800 | Loss: 0.018 | Acc: 99.67%
+Val Acc: 99.59% | Val Time: 12.9s | Time per it: 4.8s
+It: 1820 | Loss: 0.014 | Acc: 99.76%
+It: 1840 | Loss: 0.012 | Acc: 99.81%
+It: 1860 | Loss: 0.014 | Acc: 99.78%
+It: 1880 | Loss: 0.014 | Acc: 99.80%
+It: 1900 | Loss: 0.020 | Acc: 99.67%
+Val Acc: 99.75% | Val Time: 13.1s | Time per it: 4.8s
+It: 1920 | Loss: 0.021 | Acc: 99.59%
+It: 1940 | Loss: 0.019 | Acc: 99.67%
+It: 1960 | Loss: 0.015 | Acc: 99.73%
+It: 1980 | Loss: 0.012 | Acc: 99.85%
+It: 2000 | Loss: 0.014 | Acc: 99.77%
+Val Acc: 98.96% | Val Time: 10.1s | Time per it: 4.7s
+It: 2020 | Loss: 0.040 | Acc: 99.17%
+It: 2040 | Loss: 0.032 | Acc: 99.36%
+It: 2060 | Loss: 0.029 | Acc: 99.44%
+It: 2080 | Loss: 0.026 | Acc: 99.45%
+It: 2100 | Loss: 0.018 | Acc: 99.69%
+Val Acc: 99.83% | Val Time: 11.4s | Time per it: 4.2s
+It: 2120 | Loss: 0.032 | Acc: 99.32%
+It: 2140 | Loss: 0.071 | Acc: 98.32%
+It: 2160 | Loss: 0.055 | Acc: 98.67%
+It: 2180 | Loss: 0.049 | Acc: 98.81%
+It: 2200 | Loss: 0.029 | Acc: 99.43%
+Val Acc: 99.89% | Val Time: 11.5s | Time per it: 4.2s
+It: 2220 | Loss: 0.016 | Acc: 99.72%
+It: 2240 | Loss: 0.013 | Acc: 99.83%
+It: 2260 | Loss: 0.008 | Acc: 99.89%
+It: 2280 | Loss: 0.013 | Acc: 99.80%
+It: 2300 | Loss: 0.016 | Acc: 99.64%
+Val Acc: 99.12% | Val Time: 11.3s | Time per it: 4.2s
+It: 2320 | Loss: 0.043 | Acc: 98.99%
+It: 2340 | Loss: 0.060 | Acc: 98.53%
+It: 2360 | Loss: 0.066 | Acc: 98.60%
+It: 2380 | Loss: 0.085 | Acc: 98.01%
+It: 2400 | Loss: 0.033 | Acc: 99.31%
+Val Acc: 99.88% | Val Time: 9.0s | Time per it: 3.8s
+It: 2420 | Loss: 0.024 | Acc: 99.47%
+It: 2440 | Loss: 0.028 | Acc: 99.37%
+It: 2460 | Loss: 0.021 | Acc: 99.50%
+It: 2480 | Loss: 0.030 | Acc: 99.38%
+It: 2500 | Loss: 0.016 | Acc: 99.73%
+Val Acc: 99.74% | Val Time: 9.5s | Time per it: 3.7s
+It: 2520 | Loss: 0.013 | Acc: 99.73%
+It: 2540 | Loss: 0.019 | Acc: 99.62%
+It: 2560 | Loss: 0.020 | Acc: 99.51%
+It: 2580 | Loss: 0.019 | Acc: 99.48%
+It: 2600 | Loss: 0.025 | Acc: 99.36%
+Val Acc: 99.74% | Val Time: 9.6s | Time per it: 3.7s
+It: 2620 | Loss: 0.023 | Acc: 99.53%
+It: 2640 | Loss: 0.015 | Acc: 99.67%
+It: 2660 | Loss: 0.015 | Acc: 99.63%
+It: 2680 | Loss: 0.013 | Acc: 99.72%
+It: 2700 | Loss: 0.007 | Acc: 99.89%
+Val Acc: 99.96% | Val Time: 9.5s | Time per it: 3.7s
+It: 2720 | Loss: 0.014 | Acc: 99.70%
+It: 2740 | Loss: 0.118 | Acc: 97.28%
+It: 2760 | Loss: 1.044 | Acc: 68.86%
+It: 2780 | Loss: 0.946 | Acc: 67.46%
+It: 2800 | Loss: 0.563 | Acc: 82.13%
+Val Acc: 90.18% | Val Time: 7.9s | Time per it: 3.3s
+It: 2820 | Loss: 0.237 | Acc: 93.39%
+It: 2840 | Loss: 0.086 | Acc: 98.05%
+It: 2860 | Loss: 0.037 | Acc: 99.43%
+It: 2880 | Loss: 0.028 | Acc: 99.45%
+It: 2900 | Loss: 0.026 | Acc: 99.46%
+Val Acc: 99.65% | Val Time: 7.3s | Time per it: 3.2s
+It: 2920 | Loss: 0.023 | Acc: 99.57%
+It: 2940 | Loss: 0.014 | Acc: 99.81%
+It: 2960 | Loss: 0.011 | Acc: 99.86%
+It: 2980 | Loss: 0.020 | Acc: 99.63%
+It: 3000 | Loss: 0.013 | Acc: 99.78%
+Val Acc: 99.80% | Val Time: 7.5s | Time per it: 3.1s
+It: 3020 | Loss: 0.008 | Acc: 99.91%
+It: 3040 | Loss: 0.011 | Acc: 99.82%
+It: 3060 | Loss: 0.008 | Acc: 99.89%
+It: 3080 | Loss: 0.007 | Acc: 99.91%
+It: 3100 | Loss: 0.007 | Acc: 99.91%
+Val Acc: 99.80% | Val Time: 6.3s | Time per it: 2.8s
+It: 3120 | Loss: 0.023 | Acc: 99.53%
+It: 3140 | Loss: 0.017 | Acc: 99.67%
+It: 3160 | Loss: 0.012 | Acc: 99.82%
+It: 3180 | Loss: 0.009 | Acc: 99.87%
+It: 3200 | Loss: 0.017 | Acc: 99.62%
+Val Acc: 99.29% | Val Time: 6.4s | Time per it: 2.6s
+It: 3220 | Loss: 0.037 | Acc: 99.07%
+It: 3240 | Loss: 0.011 | Acc: 99.82%
+It: 3260 | Loss: 0.018 | Acc: 99.59%
+It: 3280 | Loss: 0.006 | Acc: 99.93%
+It: 3300 | Loss: 0.015 | Acc: 99.58%
+Val Acc: 99.85% | Val Time: 5.9s | Time per it: 2.6s
+It: 3320 | Loss: 0.014 | Acc: 99.65%
+It: 3340 | Loss: 0.013 | Acc: 99.66%
+It: 3360 | Loss: 0.011 | Acc: 99.76%
+It: 3380 | Loss: 0.009 | Acc: 99.86%
+It: 3400 | Loss: 0.008 | Acc: 99.85%
+Val Acc: 99.94% | Val Time: 4.3s | Time per it: 2.4s
+It: 3420 | Loss: 0.009 | Acc: 99.85%
+It: 3440 | Loss: 0.008 | Acc: 99.85%
+It: 3460 | Loss: 0.008 | Acc: 99.77%
+It: 3480 | Loss: 0.014 | Acc: 99.61%
+It: 3500 | Loss: 0.005 | Acc: 99.93%
+Val Acc: 99.93% | Val Time: 4.7s | Time per it: 2.1s
+It: 3520 | Loss: 0.007 | Acc: 99.88%
+It: 3540 | Loss: 0.005 | Acc: 99.91%
+It: 3560 | Loss: 0.006 | Acc: 99.92%
+It: 3580 | Loss: 0.010 | Acc: 99.72%
+It: 3600 | Loss: 0.011 | Acc: 99.77%
+Val Acc: 99.94% | Val Time: 4.1s | Time per it: 2.1s
+It: 3620 | Loss: 0.003 | Acc: 99.96%
+It: 3640 | Loss: 0.002 | Acc: 99.99%
+It: 3660 | Loss: 0.003 | Acc: 99.96%
+It: 3680 | Loss: 0.002 | Acc: 99.98%
+It: 3700 | Loss: 0.004 | Acc: 99.95%
+Val Acc: 99.94% | Val Time: 4.3s | Time per it: 2.1s
+It: 3720 | Loss: 0.004 | Acc: 99.95%
+It: 3740 | Loss: 0.002 | Acc: 99.99%
+It: 3760 | Loss: 0.002 | Acc: 99.98%
+It: 3780 | Loss: 0.003 | Acc: 99.97%
+It: 3800 | Loss: 0.003 | Acc: 99.97%
+Val Acc: 99.96% | Val Time: 4.3s | Time per it: 2.1s
+It: 3820 | Loss: 0.002 | Acc: 99.99%
+It: 3840 | Loss: 0.003 | Acc: 99.96%
+It: 3860 | Loss: 0.003 | Acc: 99.95%
+It: 3880 | Loss: 0.003 | Acc: 99.95%
+It: 3900 | Loss: 0.003 | Acc: 99.97%
+Val Acc: 99.98% | Val Time: 4.1s | Time per it: 2.1s
+It: 3920 | Loss: 0.002 | Acc: 99.97%
+It: 3940 | Loss: 0.003 | Acc: 99.96%
+It: 3960 | Loss: 0.003 | Acc: 99.95%
+It: 3980 | Loss: 0.003 | Acc: 99.96%
+It: 4000 | Loss: 0.003 | Acc: 99.97%
+Val Acc: 99.98% | Val Time: 3.9s | Time per it: 2.1s
+It: 4020 | Loss: 0.002 | Acc: 99.98%
+It: 4040 | Loss: 0.002 | Acc: 99.97%
+It: 4060 | Loss: 0.002 | Acc: 99.99%
+It: 4080 | Loss: 0.002 | Acc: 99.98%
+It: 4100 | Loss: 0.004 | Acc: 99.94%
+Val Acc: 99.99% | Val Time: 4.1s | Time per it: 2.1s
+It: 4120 | Loss: 0.008 | Acc: 99.83%
+It: 4140 | Loss: 0.019 | Acc: 99.54%
+It: 4160 | Loss: 0.006 | Acc: 99.90%
+It: 4180 | Loss: 0.002 | Acc: 99.98%
+It: 4200 | Loss: 0.001 | Acc: 99.99%
+Val Acc: 99.99% | Val Time: 3.9s | Time per it: 2.1s
+It: 4220 | Loss: 0.001 | Acc: 99.99%
+It: 4240 | Loss: 0.001 | Acc: 99.99%
+It: 4260 | Loss: 0.002 | Acc: 99.97%
+It: 4280 | Loss: 0.001 | Acc: 99.99%
+It: 4300 | Loss: 0.001 | Acc: 99.99%
+Val Acc: 99.98% | Val Time: 4.2s | Time per it: 2.1s
+It: 4320 | Loss: 0.002 | Acc: 99.98%
+It: 4340 | Loss: 0.001 | Acc: 99.99%
+It: 4360 | Loss: 0.001 | Acc: 99.98%
+It: 4380 | Loss: 0.002 | Acc: 99.98%
+It: 4400 | Loss: 0.002 | Acc: 99.98%
+Val Acc: 100.00% | Val Time: 4.8s | Time per it: 2.1s
+It: 4420 | Loss: 0.002 | Acc: 99.97%
+It: 4440 | Loss: 0.002 | Acc: 99.97%
+It: 4460 | Loss: 0.002 | Acc: 99.97%
+It: 4480 | Loss: 0.001 | Acc: 99.99%
+It: 4500 | Loss: 0.001 | Acc: 99.99%
+Val Acc: 99.96% | Val Time: 4.6s | Time per it: 2.1s
+It: 4520 | Loss: 0.002 | Acc: 99.98%
+It: 4540 | Loss: 0.002 | Acc: 99.98%
+It: 4560 | Loss: 0.002 | Acc: 99.98%
+It: 4580 | Loss: 0.002 | Acc: 99.97%
+It: 4600 | Loss: 0.001 | Acc: 99.99%
+Val Acc: 99.94% | Val Time: 4.1s | Time per it: 2.1s
+It: 4620 | Loss: 0.002 | Acc: 99.97%
+It: 4640 | Loss: 0.002 | Acc: 99.96%
+It: 4660 | Loss: 0.002 | Acc: 99.97%
+It: 4680 | Loss: 0.001 | Acc: 99.99%
+It: 4700 | Loss: 0.002 | Acc: 99.98%
+Val Acc: 99.99% | Val Time: 4.6s | Time per it: 2.3s
+It: 4720 | Loss: 0.001 | Acc: 99.99%
+It: 4740 | Loss: 0.002 | Acc: 99.98%
+It: 4760 | Loss: 0.002 | Acc: 99.97%
+It: 4780 | Loss: 0.002 | Acc: 99.97%
+It: 4800 | Loss: 0.004 | Acc: 99.93%
+Val Acc: 99.95% | Val Time: 4.2s | Time per it: 2.3s
+It: 4820 | Loss: 0.004 | Acc: 99.94%
+It: 4840 | Loss: 0.002 | Acc: 99.97%
+It: 4860 | Loss: 0.002 | Acc: 99.96%
+It: 4880 | Loss: 0.002 | Acc: 99.98%
+It: 4900 | Loss: 0.001 | Acc: 99.99%
+Val Acc: 99.99% | Val Time: 4.5s | Time per it: 2.2s
+It: 4920 | Loss: 0.001 | Acc: 100.00%
+It: 4940 | Loss: 0.001 | Acc: 100.00%
+It: 4960 | Loss: 0.001 | Acc: 99.99%
+It: 4980 | Loss: 0.002 | Acc: 99.96%
+It: 5000 | Loss: 0.002 | Acc: 99.98%
+Total time:  19852.60401916504
