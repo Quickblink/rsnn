@@ -2,7 +2,7 @@ import torch
 
 torch.manual_seed(0)
 
-from Code import run_all
+from Code import run_experiment
 #from Code import run_exp_new
 #from Code import run_sr
 

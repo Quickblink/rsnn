@@ -24,19 +24,7 @@ class OptWrapper:
     def zero_grad(self):
         self.opt.zero_grad()
 
-#TODO: remove
-'''
-class MyAdam(Adam):
-    def __init__(self, params, lr):
-        super().__init__(params, lr=lr)
-        self.params = list(params)
 
-    def get_grad_norm(self):
-        norm = 0
-        for p in self.params:
-            norm += (p.grad.norm().item())**2
-        return norm**(1/2)
-'''
 
 def save_results(run_id, stats, progress, model):
     with open('configs/' + run_id + '.json', 'r') as config_file:
@@ -70,7 +58,7 @@ def train(train_problem, val_problem, optimizer, model, run_id, print_every=20, 
         out, _ = model(input)
         loss, acc = train_problem.loss_and_acc(out)
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 20) #TODO: remove again
+        #torch.nn.utils.clip_grad_norm_(model.parameters(), 20)
         optimizer.step()
 
         stats['grad_norm'].append(optimizer.get_grad_norm())
