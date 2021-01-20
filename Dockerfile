@@ -11,10 +11,6 @@ RUN mkdir -p /home/developer
 ENV HOME /home/developer
 WORKDIR /home/developer
 
-COPY packages.txt /home/developer
-#COPY ray-0.9.0.dev0-cp36-cp36m-manylinux1_x86_64.whl /home/developer
-#RUN pip install -U ray-0.9.0.dev0-cp36-cp36m-manylinux1_x86_64.whl
-RUN pip install -r packages.txt
 
 #have this in the end because we are not root afterwards
 RUN export uid=1000 gid=1001 && \

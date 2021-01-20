@@ -1,0 +1,1 @@
+docker build -t imrsnn . && nvidia-docker run -v $(pwd):/home/developer --name $1 --net host --ipc host --rm -t imrsnn python3 Code/run_experiment.py $1

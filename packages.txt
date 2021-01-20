@@ -1,3 +1,0 @@
-gym==0.15.6
-#macropy3
-#typing-inspect

@@ -16,7 +16,7 @@ with open('configs/'+run_id+'.json', 'r') as config_file:
 
 
 
-DEVICE = torch.device('cuda')
+DEVICE = torch.device(spec['device'])
 
 if spec['experiment'] == 'SequentialMNIST':
     train_problem = SequentialMNIST(spec['iterations'], spec['batch_size'], DEVICE, '.')
@@ -61,7 +61,7 @@ model.to(DEVICE)
 optimizer = OptWrapper(model.parameters(), spec['lr'], spec['lr_decay'], 2500)
 
 
-train(train_problem, val_problem, optimizer, model, run_id)
+train(train_problem, val_problem, optimizer, model, run_id, validate_every=spec['validation_frequency'])
 
 
 
