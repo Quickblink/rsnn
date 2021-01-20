@@ -5,7 +5,7 @@ from Code.train import train, OptWrapper
 import torch
 import torch.nn as nn
 import numpy as np
-from Code.everything6 import OuterWrapper, DynNetwork, ParallelNetwork, SequenceWrapper, MeanModule, BaseNeuron, build_standard_loop
+from Code.everything6 import OuterWrapper, DynNetwork, ParallelNetwork, SequenceWrapper, MeanModule, BaseNeuron, build_standard_loop, LSTMWrapper
 from Code.envs.statemachine import SuccessiveLookups
 import json
 
@@ -72,9 +72,10 @@ n_in, n_out, input_rate = train_problem.get_infos()
 
 
 
-
-loop = build_standard_loop(spec, n_in, input_rate)
-loop_model = SequenceWrapper(ParallelNetwork(loop))
+loop_model = LSTMWrapper(n_in, spec['mem_config']['n_neurons']) if spec['architecture'] == 'LSTM' else SequenceWrapper(ParallelNetwork(build_standard_loop(spec, n_in, input_rate)))
+if spec['architecture'] == 'LSTM':
+    with torch.no_grad():
+        loop_model.lstm.bias_hh_l0[spec['mem_config']['n_neurons']:spec['mem_config']['n_neurons']*2] += 1
 out_neuron_size = loop_model.out_size
 
 if spec['experiment'] == 'SequentialMNIST':

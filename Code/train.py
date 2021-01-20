@@ -70,6 +70,7 @@ def train(train_problem, val_problem, optimizer, model, run_id, print_every=20, 
         out, _ = model(input)
         loss, acc = train_problem.loss_and_acc(out)
         loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 20) #TODO: remove again
         optimizer.step()
 
         stats['grad_norm'].append(optimizer.get_grad_norm())
